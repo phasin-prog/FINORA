@@ -10,7 +10,7 @@ export const createCategorySchema = z.object({
   color: z.string().trim().max(20).default('#202B27'),
 });
 
-export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
+export type CreateCategoryInput = z.input<typeof createCategorySchema>;
 
 export async function createCategory(
   rawInput: CreateCategoryInput
