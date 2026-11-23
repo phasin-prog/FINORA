@@ -21,6 +21,7 @@ import {
   exportFullBackupJson,
   restoreFullBackupJson,
 } from '@/offline/backup';
+import { importTransactionsFromCsv } from '@/offline/csv-import';
 import { sanitizeMoneyInput } from '@/lib/utilities/money';
 
 const HOUSEHOLD_ID = '11111111-1111-4111-8111-111111111111';
@@ -192,5 +193,46 @@ describe('FINORA v1.2 Accounts, Categories, Edit/Delete & Installment Calculator
     expect(sanitizeMoneyInput('300ห')).toBe('300');
     expect(sanitizeMoneyInput('1,250.56789')).toBe('1250.5678');
     expect(sanitizeMoneyInput('12.3.4')).toBe('12.34');
+  });
+
+  it('imports transactions from CSV and updates double-entry ledger balances', async () => {
+    const acc = await createFinancialAccount({
+      householdId: HOUSEHOLD_ID,
+      ownerUserId: USER_ID,
+      name: 'Import Bank',
+      accountType: 'bank',
+      openingBalance: '1000',
+      currencyCode: 'THB',
+    });
+
+    await createCategory({
+      householdId: HOUSEHOLD_ID,
+      name: 'Salary',
+      categoryType: 'INCOME',
+    });
+    await createCategory({
+      householdId: HOUSEHOLD_ID,
+      name: 'Food',
+      categoryType: 'EXPENSE',
+    });
+
+    const csv = [
+      '\uFEFFdate,type,amount,description',
+      '2026-11-20,income,5000,"เงินเดือน, พิเศษ"',
+      '2026-11-21,expense,250.50,อาหารกลางวัน',
+      '2026-11-22,expense,100,reversed',
+    ].join('\n');
+
+    const res = await importTransactionsFromCsv({
+      csvText: csv,
+      householdId: HOUSEHOLD_ID,
+      userId: USER_ID,
+      defaultAccountId: acc.id,
+    });
+
+    expect(res.importedCount).toBe(3);
+    const balances = await computeAccountBalances(HOUSEHOLD_ID);
+    // 1000 + 5000 - 250.50 - 100 = 5649.5000
+    expect(balances[0].current_balance).toBe('5649.5000');
   });
 });

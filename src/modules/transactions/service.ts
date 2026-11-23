@@ -421,20 +421,35 @@ export async function reversePostedTransaction(
       await localDb.journal_entries.update(original.journal_entry_id!, { status: 'reversed' });
       await localDb.journal_entries.add(reversalJournal);
       await localDb.journal_lines.bulkAdd(reversalLines);
-      await enqueueOutboxOperation({
-        householdId: original.household_id,
-        entityType: 'transaction',
-        entityId: reversalTxId,
-        operation: 'reverse',
-        idempotencyKey: reversalIdempotencyKey,
-        payload: {
-          originalTransactionId: original.id,
-          reversalTransactionId: reversalTxId,
-          reversalDate,
+
+      // If the original 'create' never synced to Cloud yet, cancel it from Outbox
+      // instead of queuing both 'create' and 'reverse'.
+      const unsyncedCreate = await localDb.outbox
+        .where('entity_id')
+        .equals(original.id)
+        .filter((o) => o.operation === 'create' && o.sync_status !== 'conflict')
+        .first();
+
+      if (unsyncedCreate) {
+        await localDb.outbox.delete(unsyncedCreate.id);
+        await localDb.transactions.update(original.id, { sync_status: 'synced' });
+        await localDb.transactions.update(reversalTxId, { sync_status: 'synced' });
+      } else {
+        await enqueueOutboxOperation({
+          householdId: original.household_id,
+          entityType: 'transaction',
+          entityId: reversalTxId,
+          operation: 'reverse',
           idempotencyKey: reversalIdempotencyKey,
-          reason,
-        },
-      });
+          payload: {
+            originalTransactionId: original.id,
+            reversalTransactionId: reversalTxId,
+            reversalDate,
+            idempotencyKey: reversalIdempotencyKey,
+            reason,
+          },
+        });
+      }
     }
   );
 

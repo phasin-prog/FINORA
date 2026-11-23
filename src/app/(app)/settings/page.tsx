@@ -24,6 +24,7 @@ import {
   exportFullBackupJson,
   restoreFullBackupJson,
 } from '@/offline/backup';
+import { importTransactionsFromCsv } from '@/offline/csv-import';
 import type { OutboxItem } from '@/offline/indexeddb/db';
 import {
   clearOutboxForHousehold,
@@ -37,6 +38,7 @@ import {
 export default function SettingsPage() {
   const {
     householdId,
+    userId,
     accounts,
     transactions,
     pendingSyncCount,
@@ -48,6 +50,7 @@ export default function SettingsPage() {
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const loadOutbox = useCallback(async () => {
     const items = await listOutboxItems(householdId);
@@ -125,6 +128,33 @@ export default function SettingsPage() {
     } catch (err) {
       setBackupError(
         err instanceof Error ? err.message : 'ไฟล์สำรองข้อมูลไม่ถูกต้อง'
+      );
+    } finally {
+      e.target.value = '';
+    }
+  }
+
+  async function handleImportCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBackupError(null);
+    setBackupMessage(null);
+    try {
+      const text = await file.text();
+      const res = await importTransactionsFromCsv({
+        csvText: text,
+        householdId,
+        userId,
+        defaultAccountId: accounts[0]?.id,
+      });
+      await refresh();
+      setBackupMessage(
+        `นำเข้า CSV สำเร็จ ${res.importedCount} รายการ` +
+          (res.skippedCount > 0 ? ` (ข้าม ${res.skippedCount} รายการ)` : '')
+      );
+    } catch (err) {
+      setBackupError(
+        err instanceof Error ? err.message : 'ไม่สามารถนำเข้าไฟล์ CSV ได้'
       );
     } finally {
       e.target.value = '';
@@ -257,14 +287,31 @@ export default function SettingsPage() {
             รายการค้างซิงค์ในเครื่อง: {pendingSyncCount} รายการ
           </p>
 
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="w-full py-2.5 px-4 rounded-[10px] border border-border bg-background text-primary text-sm font-medium flex items-center justify-center gap-2 hover:border-primary/40"
-          >
-            <Download className="w-4 h-4" />
-            ส่งออกข้อมูล CSV ({transactions.length} รายการ)
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="py-2.5 px-3 rounded-[10px] border border-border bg-background text-primary text-xs font-medium flex items-center justify-center gap-1.5 hover:border-primary/40"
+            >
+              <Download className="w-4 h-4" />
+              ส่งออก CSV ({transactions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => csvInputRef.current?.click()}
+              className="py-2.5 px-3 rounded-[10px] border border-border bg-background text-primary text-xs font-medium flex items-center justify-center gap-1.5 hover:border-primary/40"
+            >
+              <Upload className="w-4 h-4 text-accent" />
+              นำเข้า CSV
+            </button>
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => void handleImportCsv(e)}
+              className="hidden"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -345,7 +392,7 @@ export default function SettingsPage() {
                     await refresh();
                     await loadOutbox();
                   }}
-                  className="text-xs font-medium text-muted hover:text-danger"
+                  className="px-2.5 py-1 rounded-[8px] border border-border text-xs font-medium text-muted hover:text-danger hover:border-danger/40"
                 >
                   ล้างคิวทั้งหมด
                 </button>
@@ -353,9 +400,17 @@ export default function SettingsPage() {
             </div>
 
             {syncFeedback && (
-              <p className="text-xs text-warning bg-warning/10 border border-warning/30 rounded-[8px] px-3 py-2">
-                {syncFeedback}
-              </p>
+              <div className="text-xs text-warning bg-warning/10 border border-warning/30 rounded-[8px] px-3 py-2 flex items-center justify-between gap-2">
+                <span>{syncFeedback}</span>
+                {syncFeedback.includes('เข้าสู่ระบบ') && (
+                  <Link
+                    href="/login"
+                    className="font-semibold text-primary underline shrink-0"
+                  >
+                    เข้าสู่ระบบ
+                  </Link>
+                )}
+              </div>
             )}
 
             <ul className="divide-y divide-border">
