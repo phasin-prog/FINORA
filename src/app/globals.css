@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/*
+ * FINORA Editorial Finance — Design Tokens
+ * Swiss-inspired minimalist editorial aesthetic with Light & Dark (Deep Forest / Charcoal) modes.
+ */
+
+:root {
+  --finora-bg: #F6F5F0;
+  --finora-surface: #FFFFFF;
+  --finora-surface-elevated: #FAF9F5;
+  --finora-primary: #202B27;
+  --finora-primary-fg: #FFFFFF;
+  --finora-accent: #39846C;
+  --finora-warning: #C28B48;
+  --finora-danger: #C75B50;
+  --finora-muted: #858B85;
+  --finora-border: #E6E5DF;
+
+  /* Component Radii */
+  --radius-input: 8px;
+  --radius-button: 10px;
+  --radius-card: 14px;
+  --radius-panel: 18px;
+  --radius-modal: 20px;
+  --radius-pill: 999px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --finora-bg: #121715;
+    --finora-surface: #1A221E;
+    --finora-surface-elevated: #222C27;
+    --finora-primary: #ECECE6;
+    --finora-primary-fg: #121715;
+    --finora-accent: #4DA488;
+    --finora-warning: #D6A15C;
+    --finora-danger: #DC7267;
+    --finora-muted: #939B95;
+    --finora-border: #2C3732;
+  }
+}
+
+@theme inline {
+  --color-background: var(--finora-bg);
+  --color-surface: var(--finora-surface);
+  --color-surface-elevated: var(--finora-surface-elevated);
+  --color-primary: var(--finora-primary);
+  --color-primary-foreground: var(--finora-primary-fg);
+  --color-accent: var(--finora-accent);
+  --color-warning: var(--finora-warning);
+  --color-danger: var(--finora-danger);
+  --color-muted: var(--finora-muted);
+  --color-border: var(--finora-border);
+
+  --font-sans: var(--font-inter), var(--font-ibm-plex-thai), ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  background-color: var(--finora-bg);
+  color: var(--finora-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Tabular numbers for all financial amounts */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

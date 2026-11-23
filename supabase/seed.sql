@@ -1,0 +1,16 @@
+-- FINORA — Seed Reference & Verification Script
+-- This file documents the standard Chart of Accounts and can be used in local
+-- Supabase development after creating a test user in auth.users.
+
+-- Example: Verify double-entry balance across all posted journal entries
+-- SELECT
+--   je.id,
+--   je.entry_date,
+--   je.description,
+--   SUM(jl.debit) AS total_debit,
+--   SUM(jl.credit) AS total_credit
+-- FROM public.journal_entries je
+-- JOIN public.journal_lines jl ON jl.journal_entry_id = je.id
+-- WHERE je.status = 'posted'
+-- GROUP BY je.id, je.entry_date, je.description
+-- HAVING SUM(jl.debit) <> SUM(jl.credit);
