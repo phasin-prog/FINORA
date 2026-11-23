@@ -1,27 +1,30 @@
 'use client';
 
 import { useState } from 'react';
+import Decimal from 'decimal.js';
 import { Pencil, Plus, X } from 'lucide-react';
 import { MobileShell } from '@/components/layout/MobileShell';
 import { useFinora } from '@/components/layout/FinoraProvider';
 import { AccountIcon } from '@/components/financial/category-icon';
-import { formatTHB } from '@/lib/utilities/money';
+import { formatTHB, toDecimal } from '@/lib/utilities/money';
 import {
   createFinancialAccount,
   updateFinancialAccount,
 } from '@/modules/accounts/service';
-import type { AccountType, FinancialAccount } from '@/types/financial';
+import type { AccountWithBalance } from '@/modules/transactions/service';
+import type { AccountType } from '@/types/financial';
 
 export default function AccountsPage() {
   const { householdId, userId, accounts, refresh } = useFinora();
 
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<FinancialAccount | null>(null);
+  const [editing, setEditing] = useState<AccountWithBalance | null>(null);
   const [name, setName] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('bank');
   const [institution, setInstitution] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [openingBalance, setOpeningBalance] = useState('0');
+  const [targetCurrentBalance, setTargetCurrentBalance] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function openNewForm() {
@@ -31,17 +34,19 @@ export default function AccountsPage() {
     setInstitution('');
     setAccountNumber('');
     setOpeningBalance('0');
+    setTargetCurrentBalance('');
     setError(null);
     setShowForm(true);
   }
 
-  function openEditForm(acc: FinancialAccount) {
+  function openEditForm(acc: AccountWithBalance) {
     setEditing(acc);
     setName(acc.name);
     setAccountType(acc.account_type);
     setInstitution(acc.institution ?? '');
     setAccountNumber(acc.account_number ?? '');
     setOpeningBalance(Number(acc.opening_balance).toString());
+    setTargetCurrentBalance(Number(acc.current_balance).toString());
     setError(null);
     setShowForm(true);
   }
@@ -51,12 +56,21 @@ export default function AccountsPage() {
     setError(null);
     try {
       if (editing) {
+        let nextOpening = openingBalance.trim() || '0';
+        if (targetCurrentBalance.trim() !== '') {
+          const desired = toDecimal(targetCurrentBalance.trim());
+          const netLedgerDelta: Decimal = toDecimal(editing.current_balance).minus(
+            toDecimal(editing.opening_balance)
+          );
+          nextOpening = desired.minus(netLedgerDelta).toFixed(4);
+        }
+
         await updateFinancialAccount(editing.id, {
           name: name.trim(),
           account_type: accountType,
           institution: institution.trim() || null,
           account_number: accountNumber.trim() || null,
-          opening_balance: openingBalance.trim() || '0',
+          opening_balance: nextOpening,
         });
       } else {
         await createFinancialAccount({
@@ -167,17 +181,33 @@ export default function AccountsPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs text-muted mb-1">ยอดตั้งต้น (THB)</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                required
-                value={openingBalance}
-                onChange={(e) => setOpeningBalance(e.target.value)}
-                className="w-full px-3 py-2 text-sm tabular-nums bg-background border border-border rounded-[8px]"
-              />
-            </div>
+            {editing ? (
+              <div>
+                <label className="block text-xs text-muted mb-1">
+                  ปรับยอดคงเหลือปัจจุบัน (THB)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  required
+                  value={targetCurrentBalance}
+                  onChange={(e) => setTargetCurrentBalance(e.target.value)}
+                  className="w-full px-3 py-2 text-sm font-semibold tabular-nums bg-background border border-border rounded-[8px]"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs text-muted mb-1">ยอดตั้งต้น (THB)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  required
+                  value={openingBalance}
+                  onChange={(e) => setOpeningBalance(e.target.value)}
+                  className="w-full px-3 py-2 text-sm tabular-nums bg-background border border-border rounded-[8px]"
+                />
+              </div>
+            )}
 
             {error && <p className="text-xs text-danger">{error}</p>}
 

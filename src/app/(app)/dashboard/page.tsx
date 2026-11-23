@@ -45,8 +45,15 @@ function getPeriodRange(
 }
 
 export default function DashboardPage() {
-  const { householdId, accounts, categories, transactions, loading, openEntry } =
-    useFinora();
+  const {
+    householdId,
+    accounts,
+    categories,
+    transactions,
+    loading,
+    openEntry,
+    openEditTransaction,
+  } = useFinora();
   const [period, setPeriod] = useState<PeriodKey>('this_month');
   const [anchorDate, setAnchorDate] = useState<Date | null>(null);
   const [dailySafeToSpend, setDailySafeToSpend] = useState<Decimal | null>(null);
@@ -278,48 +285,51 @@ export default function DashboardPage() {
                 const isTransfer = tx.transaction_type === 'transfer';
 
                 return (
-                  <li
-                    key={tx.id}
-                    className="py-3 flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-background border border-border flex items-center justify-center shrink-0">
-                        {isIncome ? (
-                          <ArrowDownLeft className="w-4 h-4 text-accent" />
-                        ) : isTransfer ? (
-                          <Repeat className="w-4 h-4 text-muted" />
-                        ) : (
-                          <ArrowUpRight className="w-4 h-4 text-primary" />
-                        )}
+                  <li key={tx.id}>
+                    <button
+                      type="button"
+                      onClick={() => openEditTransaction(tx)}
+                      className="w-full py-3 flex items-center justify-between gap-3 text-left hover:bg-background/50 rounded-[10px] px-1 -mx-1 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-background border border-border flex items-center justify-center shrink-0">
+                          {isIncome ? (
+                            <ArrowDownLeft className="w-4 h-4 text-accent" />
+                          ) : isTransfer ? (
+                            <Repeat className="w-4 h-4 text-muted" />
+                          ) : (
+                            <ArrowUpRight className="w-4 h-4 text-primary" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-primary truncate">
+                            {tx.description || cat?.name || 'โอนเงินระหว่างบัญชี'}
+                          </p>
+                          <p className="text-xs text-muted truncate">
+                            {tx.transaction_date} · {acc?.name ?? 'บัญชี'}
+                            {tx.status === 'draft' && ' · Draft'}
+                            {tx.status === 'reversed' && ' · Reversed'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-primary truncate">
-                          {tx.description || cat?.name || 'โอนเงินระหว่างบัญชี'}
-                        </p>
-                        <p className="text-xs text-muted truncate">
-                          {tx.transaction_date} · {acc?.name ?? 'บัญชี'}
-                          {tx.status === 'draft' && ' · Draft'}
-                          {tx.status === 'reversed' && ' · Reversed'}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="text-right shrink-0">
-                      <p
-                        className={`text-sm font-semibold tabular-nums ${
-                          tx.status === 'reversed' || tx.status === 'cancelled'
-                            ? 'line-through text-muted'
-                            : isIncome
-                              ? 'text-accent'
-                              : isTransfer
-                                ? 'text-muted'
-                                : 'text-primary'
-                        }`}
-                      >
-                        {isIncome ? '+' : isTransfer ? '' : '-'}
-                        {formatTHB(tx.amount)}
-                      </p>
-                    </div>
+                      <div className="text-right shrink-0">
+                        <p
+                          className={`text-sm font-semibold tabular-nums ${
+                            tx.status === 'reversed' || tx.status === 'cancelled'
+                              ? 'line-through text-muted'
+                              : isIncome
+                                ? 'text-accent'
+                                : isTransfer
+                                  ? 'text-muted'
+                                  : 'text-primary'
+                          }`}
+                        >
+                          {isIncome ? '+' : isTransfer ? '' : '-'}
+                          {formatTHB(tx.amount)}
+                        </p>
+                      </div>
+                    </button>
                   </li>
                 );
               })}

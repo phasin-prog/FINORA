@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Decimal from 'decimal.js';
-import { Check, Pencil, Search, Trash2, X, XCircle } from 'lucide-react';
+import { Check, Pencil, Search, Trash2, XCircle } from 'lucide-react';
 import { MobileShell } from '@/components/layout/MobileShell';
 import { useFinora } from '@/components/layout/FinoraProvider';
 import { CategoryIcon } from '@/components/financial/category-icon';
@@ -12,14 +12,19 @@ import {
   cancelDraftTransaction,
   deleteOrReverseTransaction,
   postDraftTransaction,
-  updateOrCorrectTransaction,
 } from '@/modules/transactions/service';
 import type { Transaction, TransactionType } from '@/types/financial';
 
 type DatePreset = 'all' | 'today' | '7d' | 'month';
 
 export default function TransactionsPage() {
-  const { userId, transactions, accounts, categories, refresh } = useFinora();
+  const {
+    transactions,
+    accounts,
+    categories,
+    refresh,
+    openEditTransaction,
+  } = useFinora();
   const [todayDate, setTodayDate] = useState('2026-11-23');
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [search, setSearch] = useState('');
@@ -30,14 +35,6 @@ export default function TransactionsPage() {
   );
   const [hideReversed, setHideReversed] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
-
-  // Edit modal state
-  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
-  const [editAmount, setEditAmount] = useState('');
-  const [editDate, setEditDate] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editCategoryId, setEditCategoryId] = useState('');
-  const [editAccountId, setEditAccountId] = useState('');
 
   useEffect(() => {
     setTodayDate(toBangkokDateString());
@@ -154,39 +151,6 @@ export default function TransactionsPage() {
 
     return Array.from(groups.entries());
   }, [filtered]);
-
-  function openEditModal(tx: Transaction) {
-    setEditingTx(tx);
-    setEditAmount(Number(tx.amount).toString());
-    setEditDate(tx.transaction_date);
-    setEditDescription(tx.description);
-    setEditCategoryId(tx.category_id ?? '');
-    setEditAccountId(tx.account_id);
-    setActionError(null);
-  }
-
-  async function handleSaveEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingTx) return;
-    setActionError(null);
-    try {
-      await updateOrCorrectTransaction(
-        editingTx.id,
-        {
-          amount: editAmount.trim(),
-          transactionDate: editDate,
-          description: editDescription.trim(),
-          categoryId: editingTx.transaction_type === 'transfer' ? null : editCategoryId || null,
-          accountId: editAccountId,
-        },
-        userId
-      );
-      setEditingTx(null);
-      await refresh();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'แก้ไขรายการไม่สำเร็จ');
-    }
-  }
 
   async function handleDelete(txId: string) {
     setActionError(null);
@@ -340,107 +304,6 @@ export default function TransactionsPage() {
           </div>
         )}
 
-        {/* Edit Modal */}
-        {editingTx && (
-          <form
-            onSubmit={handleSaveEdit}
-            className="bg-surface border-2 border-primary rounded-[18px] p-4 space-y-3"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-primary">
-                แก้ไขรายการ (ปรับยอด & บัญชีคู่อัตโนมัติ)
-              </p>
-              <button
-                type="button"
-                onClick={() => setEditingTx(null)}
-                className="p-1 text-muted hover:text-primary"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-muted mb-1">จำนวนเงิน (THB)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  required
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-semibold tabular-nums bg-background border border-border rounded-[8px]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-muted mb-1">วันที่</label>
-                <input
-                  type="date"
-                  required
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-[8px]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-muted mb-1">บัญชี</label>
-                <select
-                  value={editAccountId}
-                  onChange={(e) => setEditAccountId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-[8px]"
-                >
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {editingTx.transaction_type !== 'transfer' && (
-                <div>
-                  <label className="block text-xs text-muted mb-1">หมวดหมู่</label>
-                  <select
-                    value={editCategoryId}
-                    onChange={(e) => setEditCategoryId(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-[8px]"
-                  >
-                    {categories
-                      .filter((c) =>
-                        editingTx.transaction_type === 'income'
-                          ? c.category_type === 'INCOME'
-                          : c.category_type === 'EXPENSE'
-                      )
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs text-muted mb-1">รายละเอียด</label>
-              <input
-                type="text"
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-background border border-border rounded-[8px]"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded-[10px] bg-primary text-primary-foreground text-sm font-medium"
-            >
-              บันทึกการแก้ไข
-            </button>
-          </form>
-        )}
-
         {/* Daily Groups */}
         {groupedByDate.length === 0 ? (
           <div className="bg-surface border border-border rounded-[18px] p-8 text-center text-sm text-muted">
@@ -548,7 +411,7 @@ export default function TransactionsPage() {
                             <>
                               <button
                                 type="button"
-                                onClick={() => openEditModal(tx)}
+                                onClick={() => openEditTransaction(tx)}
                                 title="แก้ไขรายการ"
                                 className="p-1.5 rounded-[8px] border border-border text-muted hover:text-primary"
                               >

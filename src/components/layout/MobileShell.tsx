@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useFinora } from '@/components/layout/FinoraProvider';
 import { QuickTransactionSheet } from '@/components/forms/QuickTransactionSheet';
+import { EditTransactionSheet } from '@/components/forms/EditTransactionSheet';
 import { PwaSupport } from '@/components/pwa/PwaSupport';
 import { NotificationBadge } from '@/components/financial/notification-badge';
 
@@ -137,6 +138,7 @@ export function MobileShell({
       </nav>
 
       <QuickTransactionSheet />
+      <EditTransactionSheet />
     </div>
   );
 }
