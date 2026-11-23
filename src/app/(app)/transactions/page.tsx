@@ -45,6 +45,7 @@ export default function TransactionsPage() {
     for (const tx of transactions) {
       if (
         tx.status === 'posted' &&
+        !tx.reversed_transaction_id &&
         tx.transaction_type === 'expense' &&
         tx.transaction_date === todayDate
       ) {
@@ -58,7 +59,12 @@ export default function TransactionsPage() {
     let list = [...transactions];
 
     if (hideReversed) {
-      list = list.filter((t) => t.status !== 'reversed' && t.status !== 'cancelled');
+      list = list.filter(
+        (t) =>
+          t.status !== 'reversed' &&
+          t.status !== 'cancelled' &&
+          !t.reversed_transaction_id
+      );
     }
 
     if (datePreset === 'today') {
@@ -119,7 +125,11 @@ export default function TransactionsPage() {
   const filteredExpenseTotal = useMemo(() => {
     let total = new Decimal(0);
     for (const tx of filtered) {
-      if (tx.status === 'posted' && tx.transaction_type === 'expense') {
+      if (
+        tx.status === 'posted' &&
+        !tx.reversed_transaction_id &&
+        tx.transaction_type === 'expense'
+      ) {
         total = total.plus(toDecimal(tx.amount));
       }
     }
@@ -139,7 +149,7 @@ export default function TransactionsPage() {
         expense: new Decimal(0),
       };
       entry.items.push(tx);
-      if (tx.status === 'posted') {
+      if (tx.status === 'posted' && !tx.reversed_transaction_id) {
         if (tx.transaction_type === 'income') {
           entry.income = entry.income.plus(toDecimal(tx.amount));
         } else if (tx.transaction_type === 'expense') {

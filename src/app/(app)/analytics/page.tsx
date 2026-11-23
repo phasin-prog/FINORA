@@ -15,7 +15,10 @@ export default function AnalyticsPage() {
   const { transactions, categories } = useFinora();
 
   const posted = useMemo(
-    () => transactions.filter((t) => t.status === 'posted'),
+    () =>
+      transactions.filter(
+        (t) => t.status === 'posted' && !t.reversed_transaction_id
+      ),
     [transactions]
   );
 

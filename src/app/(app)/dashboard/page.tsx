@@ -101,12 +101,13 @@ export default function DashboardPage() {
     );
   }, [accounts]);
 
-  // Only posted transactions count toward Income / Expense / Spending Breakdown
+  // Only active posted transactions (exclude reversal audit rows) count toward Income / Expense
   const periodPosted = useMemo(
     () =>
       transactions.filter(
         (t) =>
           t.status === 'posted' &&
+          !t.reversed_transaction_id &&
           t.transaction_date >= range.start &&
           t.transaction_date <= range.end
       ),
@@ -148,7 +149,18 @@ export default function DashboardPage() {
     };
   }, [periodPosted, categories]);
 
-  const recentTransactions = transactions.slice(0, 6);
+  const recentTransactions = useMemo(
+    () =>
+      transactions
+        .filter(
+          (t) =>
+            t.status !== 'reversed' &&
+            t.status !== 'cancelled' &&
+            !t.reversed_transaction_id
+        )
+        .slice(0, 6),
+    [transactions]
+  );
 
   return (
     <MobileShell title="ภาพรวมการเงิน">

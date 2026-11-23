@@ -105,6 +105,7 @@ export async function getMonthlyFinancialCalendar(
       .filter(
         (t) =>
           t.status === 'posted' &&
+          !t.reversed_transaction_id &&
           t.transaction_date.startsWith(monthKey) &&
           (t.transaction_type === 'income' || t.transaction_type === 'expense')
       )

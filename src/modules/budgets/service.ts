@@ -68,7 +68,12 @@ export async function evaluateBudgets(
     localDb.transactions
       .where('household_id')
       .equals(householdId)
-      .filter((t) => t.status === 'posted' && t.transaction_type === 'expense')
+      .filter(
+        (t) =>
+          t.status === 'posted' &&
+          !t.reversed_transaction_id &&
+          t.transaction_type === 'expense'
+      )
       .toArray(),
   ]);
 
