@@ -21,6 +21,7 @@ import {
   exportFullBackupJson,
   restoreFullBackupJson,
 } from '@/offline/backup';
+import { sanitizeMoneyInput } from '@/lib/utilities/money';
 
 const HOUSEHOLD_ID = '11111111-1111-4111-8111-111111111111';
 const USER_ID = '22222222-2222-4222-8222-222222222222';
@@ -185,5 +186,11 @@ describe('FINORA v1.2 Accounts, Categories, Edit/Delete & Installment Calculator
     expect(res.accountsRestored).toBe(1);
     const restoredAcc = await localDb.accounts.get(acc.id);
     expect(restoredAcc?.name).toBe('Backup Bank');
+  });
+
+  it('sanitizes non-numeric characters in money inputs (e.g. 300ห -> 300)', () => {
+    expect(sanitizeMoneyInput('300ห')).toBe('300');
+    expect(sanitizeMoneyInput('1,250.56789')).toBe('1250.5678');
+    expect(sanitizeMoneyInput('12.3.4')).toBe('12.34');
   });
 });

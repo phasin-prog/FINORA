@@ -61,3 +61,33 @@ export function formatTHB(
   }
   return `฿${absFormatted}`;
 }
+
+/**
+ * Sanitizes user input in monetary fields so only digits and a single decimal
+ * point (up to 4 decimal places) are accepted at keystroke time.
+ */
+export function sanitizeMoneyInput(raw: string, allowNegative = false): string {
+  const isNeg = allowNegative && raw.trimStart().startsWith('-');
+  const cleaned = raw.replace(/[^0-9.]/g, '');
+  const dotIdx = cleaned.indexOf('.');
+  let normalized = cleaned;
+  if (dotIdx !== -1) {
+    const intPart = cleaned.slice(0, dotIdx);
+    const fracPart = cleaned.slice(dotIdx + 1).replace(/\./g, '').slice(0, 4);
+    normalized = `${intPart}.${fracPart}`;
+  }
+  return isNeg ? `-${normalized}` : normalized;
+}
+
+export function formatFriendlyError(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'issues' in err) {
+    const issues = (err as { issues?: Array<{ message?: string }> }).issues;
+    if (Array.isArray(issues) && issues[0]?.message) {
+      return issues[0].message;
+    }
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return fallback;
+}

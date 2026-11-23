@@ -6,7 +6,7 @@ import { Pencil, Plus, X } from 'lucide-react';
 import { MobileShell } from '@/components/layout/MobileShell';
 import { useFinora } from '@/components/layout/FinoraProvider';
 import { AccountIcon } from '@/components/financial/category-icon';
-import { formatTHB, toDecimal } from '@/lib/utilities/money';
+import { formatFriendlyError, formatTHB, sanitizeMoneyInput, toDecimal } from '@/lib/utilities/money';
 import {
   createFinancialAccount,
   updateFinancialAccount,
@@ -88,7 +88,7 @@ export default function AccountsPage() {
       setShowForm(false);
       setEditing(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถบันทึกบัญชีได้');
+      setError(formatFriendlyError(err, 'ไม่สามารถบันทึกบัญชีได้'));
     }
   }
 
@@ -191,7 +191,7 @@ export default function AccountsPage() {
                   inputMode="decimal"
                   required
                   value={targetCurrentBalance}
-                  onChange={(e) => setTargetCurrentBalance(e.target.value)}
+                  onChange={(e) => setTargetCurrentBalance(sanitizeMoneyInput(e.target.value, true))}
                   className="w-full px-3 py-2 text-sm font-semibold tabular-nums bg-background border border-border rounded-[8px]"
                 />
               </div>
@@ -203,7 +203,7 @@ export default function AccountsPage() {
                   inputMode="decimal"
                   required
                   value={openingBalance}
-                  onChange={(e) => setOpeningBalance(e.target.value)}
+                  onChange={(e) => setOpeningBalance(sanitizeMoneyInput(e.target.value, true))}
                   className="w-full px-3 py-2 text-sm tabular-nums bg-background border border-border rounded-[8px]"
                 />
               </div>

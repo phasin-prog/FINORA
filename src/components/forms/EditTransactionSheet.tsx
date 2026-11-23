@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Trash2, X } from 'lucide-react';
 import { useFinora } from '@/components/layout/FinoraProvider';
+import { formatFriendlyError, sanitizeMoneyInput } from '@/lib/utilities/money';
 import {
   deleteOrReverseTransaction,
   updateOrCorrectTransaction,
@@ -63,7 +64,7 @@ export function EditTransactionSheet() {
       await refresh();
       closeEditTransaction();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถแก้ไขรายการได้');
+      setError(formatFriendlyError(err, 'ไม่สามารถแก้ไขรายการได้'));
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +121,7 @@ export function EditTransactionSheet() {
               required
               autoFocus
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => setAmount(sanitizeMoneyInput(e.target.value))}
               className="w-full px-4 py-3 text-2xl font-semibold tabular-nums bg-background border border-border rounded-[10px] text-primary focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>

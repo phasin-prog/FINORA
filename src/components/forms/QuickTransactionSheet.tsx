@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { X, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { useFinora } from '@/components/layout/FinoraProvider';
+import { formatFriendlyError, sanitizeMoneyInput } from '@/lib/utilities/money';
 import { createCategory } from '@/modules/categories/service';
 import { createLocalTransaction } from '@/modules/transactions/service';
 import type { TransactionType } from '@/types/financial';
@@ -93,7 +94,7 @@ export function QuickTransactionSheet() {
       setShowAdvanced(false);
       closeEntry();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถบันทึกรายการได้');
+      setError(formatFriendlyError(err, 'ไม่สามารถบันทึกรายการได้'));
     } finally {
       setSubmitting(false);
     }
@@ -155,7 +156,7 @@ export function QuickTransactionSheet() {
               required
               autoFocus
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => setAmount(sanitizeMoneyInput(e.target.value))}
               placeholder="0.00"
               className="w-full px-4 py-3 text-2xl font-semibold tabular-nums bg-background border border-border rounded-[10px] text-primary focus:outline-none focus:ring-2 focus:ring-accent"
             />

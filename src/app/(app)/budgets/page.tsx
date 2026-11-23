@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { MobileShell } from '@/components/layout/MobileShell';
 import { useFinora } from '@/components/layout/FinoraProvider';
-import { formatTHB } from '@/lib/utilities/money';
+import { formatFriendlyError, formatTHB, sanitizeMoneyInput } from '@/lib/utilities/money';
 import {
   createBudget,
   deleteBudget,
@@ -62,7 +62,7 @@ export default function BudgetsPage() {
       setShowForm(false);
       await loadBudgets();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถสร้างงบประมาณได้');
+      setError(formatFriendlyError(err, 'ไม่สามารถสร้างงบประมาณได้'));
     }
   }
 
@@ -120,7 +120,7 @@ export default function BudgetsPage() {
                 inputMode="decimal"
                 required
                 value={budgetAmount}
-                onChange={(e) => setBudgetAmount(e.target.value)}
+                onChange={(e) => setBudgetAmount(sanitizeMoneyInput(e.target.value))}
                 placeholder="10000"
                 className="w-full px-3 py-2 text-sm tabular-nums bg-background border border-border rounded-[8px] text-primary"
               />

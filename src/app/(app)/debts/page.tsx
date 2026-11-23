@@ -5,7 +5,7 @@ import Decimal from 'decimal.js';
 import { Calculator, CreditCard, Plus } from 'lucide-react';
 import { MobileShell } from '@/components/layout/MobileShell';
 import { useFinora } from '@/components/layout/FinoraProvider';
-import { formatTHB, toDecimal } from '@/lib/utilities/money';
+import { formatFriendlyError, formatTHB, sanitizeMoneyInput, toDecimal } from '@/lib/utilities/money';
 import {
   createLiability,
   listLiabilities,
@@ -163,7 +163,7 @@ export default function DebtsPage() {
       setShowAdd(false);
       await loadDebts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถเพิ่มรายการหนี้ได้');
+      setError(formatFriendlyError(err, 'ไม่สามารถเพิ่มรายการหนี้ได้'));
     }
   }
 
@@ -190,7 +190,7 @@ export default function DebtsPage() {
       await loadDebts();
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'บันทึกการชำระไม่สำเร็จ');
+      setError(formatFriendlyError(err, 'บันทึกการชำระไม่สำเร็จ'));
     }
   }
 
@@ -515,7 +515,7 @@ export default function DebtsPage() {
                   inputMode="decimal"
                   required
                   value={principalPaid}
-                  onChange={(e) => setPrincipalPaid(e.target.value)}
+                  onChange={(e) => setPrincipalPaid(sanitizeMoneyInput(e.target.value))}
                   placeholder="2000"
                   className="w-full px-3 py-2 text-sm tabular-nums bg-background border border-border rounded-[8px]"
                 />
@@ -526,7 +526,7 @@ export default function DebtsPage() {
                   type="text"
                   inputMode="decimal"
                   value={interestPaid}
-                  onChange={(e) => setInterestPaid(e.target.value)}
+                  onChange={(e) => setInterestPaid(sanitizeMoneyInput(e.target.value))}
                   placeholder="0"
                   className="w-full px-3 py-2 text-sm tabular-nums bg-background border border-border rounded-[8px]"
                 />
