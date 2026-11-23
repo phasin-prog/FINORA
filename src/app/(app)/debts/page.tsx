@@ -58,18 +58,23 @@ export default function DebtsPage() {
   }, [householdId]);
 
   useEffect(() => {
-    setPaymentDate(new Date().toISOString().slice(0, 10));
-    void loadDebts();
-  }, [loadDebts]);
+    let active = true;
+    const today = new Date().toISOString().slice(0, 10);
+    void listLiabilities(householdId).then((items) => {
+      if (!active) return;
+      setPaymentDate((prev) => prev || today);
+      setLiabilities(items);
+    });
+    return () => {
+      active = false;
+    };
+  }, [householdId]);
 
-  useEffect(() => {
-    if (!paymentAccountId && accounts.length > 0) {
-      const cashOrBank = accounts.find(
-        (a) => a.account_type === 'bank' || a.account_type === 'cash'
-      );
-      setPaymentAccountId(cashOrBank?.id ?? accounts[0].id);
-    }
-  }, [accounts, paymentAccountId]);
+  const effectivePaymentAccountId =
+    paymentAccountId ||
+    accounts.find((a) => a.account_type === 'bank' || a.account_type === 'cash')?.id ||
+    accounts[0]?.id ||
+    '';
 
   const totalOutstanding = liabilities
     .filter((l) => l.status === 'active')
@@ -180,7 +185,7 @@ export default function DebtsPage() {
         paymentDate,
         principalPaid: principalPaid || '0',
         interestPaid: interestPaid || '0',
-        paymentAccountId: paymentAccountId || null,
+        paymentAccountId: effectivePaymentAccountId || null,
         interestCategoryId: interestCategory?.id ?? null,
         createdBy: userId,
       });
@@ -537,7 +542,7 @@ export default function DebtsPage() {
               <div>
                 <label className="block text-xs text-muted mb-1">จ่ายจากบัญชี</label>
                 <select
-                  value={paymentAccountId}
+                  value={effectivePaymentAccountId}
                   onChange={(e) => setPaymentAccountId(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-background border border-border rounded-[8px]"
                 >

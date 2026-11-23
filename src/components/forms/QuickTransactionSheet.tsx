@@ -38,27 +38,24 @@ export function QuickTransactionSheet() {
     txType === 'income' ? c.category_type === 'INCOME' : c.category_type === 'EXPENSE'
   );
 
-  useEffect(() => {
-    if (!isEntryOpen) return;
-    if (!txDate) {
-      setTxDate(new Date().toISOString().slice(0, 10));
-    }
-    if (!accountId && accounts.length > 0) {
-      setAccountId(accounts[0].id);
-    }
-    if (!toAccountId && accounts.length > 1) {
-      setToAccountId(accounts[1].id);
-    }
-  }, [isEntryOpen, accounts, accountId, toAccountId, txDate]);
+  const effectiveAccountId = accountId || accounts[0]?.id || '';
+  const effectiveToAccountId = toAccountId || accounts[1]?.id || accounts[0]?.id || '';
+  const effectiveCategoryId = filteredCategories.some((c) => c.id === categoryId)
+    ? categoryId
+    : (filteredCategories[0]?.id ?? '');
 
   useEffect(() => {
-    if (txType !== 'transfer' && filteredCategories.length > 0) {
-      const stillValid = filteredCategories.some((c) => c.id === categoryId);
-      if (!stillValid) {
-        setCategoryId(filteredCategories[0].id);
+    if (!isEntryOpen || txDate) return;
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (active) {
+        setTxDate(new Date().toISOString().slice(0, 10));
       }
-    }
-  }, [txType, filteredCategories, categoryId]);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isEntryOpen, txDate]);
 
   if (!isEntryOpen) return null;
 
@@ -74,10 +71,10 @@ export function QuickTransactionSheet() {
           transactionType: txType,
           amount: amount.trim(),
           currencyCode: 'THB',
-          transactionDate: txDate,
-          accountId,
-          toAccountId: txType === 'transfer' ? toAccountId : null,
-          categoryId: txType === 'transfer' ? null : categoryId,
+          transactionDate: txDate || new Date().toISOString().slice(0, 10),
+          accountId: effectiveAccountId,
+          toAccountId: txType === 'transfer' ? effectiveToAccountId : null,
+          categoryId: txType === 'transfer' ? null : effectiveCategoryId,
           description: description.trim(),
           notes: notes.trim() || null,
           idempotencyKey: crypto.randomUUID(),
@@ -175,7 +172,7 @@ export function QuickTransactionSheet() {
                     type="button"
                     onClick={() => setCategoryId(cat.id)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
-                      categoryId === cat.id
+                      effectiveCategoryId === cat.id
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-background text-primary border-border hover:border-primary/40'
                     }`}
@@ -230,7 +227,7 @@ export function QuickTransactionSheet() {
                 ไปยังบัญชี (ปลายทาง)
               </label>
               <select
-                value={toAccountId}
+                value={effectiveToAccountId}
                 onChange={(e) => setToAccountId(e.target.value)}
                 className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-[8px] text-primary focus:outline-none focus:ring-2 focus:ring-accent"
               >
@@ -250,7 +247,7 @@ export function QuickTransactionSheet() {
                 {txType === 'transfer' ? 'จากบัญชี (ต้นทาง)' : 'บัญชี'}
               </label>
               <select
-                value={accountId}
+                value={effectiveAccountId}
                 onChange={(e) => setAccountId(e.target.value)}
                 className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-[8px] text-primary focus:outline-none focus:ring-2 focus:ring-accent"
               >

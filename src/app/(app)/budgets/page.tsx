@@ -30,6 +30,7 @@ export default function BudgetsPage() {
   }, [householdId]);
 
   useEffect(() => {
+    let active = true;
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1)
       .toISOString()
@@ -37,13 +38,18 @@ export default function BudgetsPage() {
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
       .toISOString()
       .slice(0, 10);
-    setPeriodStart((prev) => prev || start);
-    setPeriodEnd((prev) => prev || end);
-  }, []);
 
-  useEffect(() => {
-    void loadBudgets();
-  }, [loadBudgets, transactions]);
+    void evaluateBudgets(householdId).then((evals) => {
+      if (!active) return;
+      setPeriodStart((prev) => prev || start);
+      setPeriodEnd((prev) => prev || end);
+      setBudgets(evals);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [householdId, transactions]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();

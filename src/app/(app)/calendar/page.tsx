@@ -38,12 +38,19 @@ export default function CalendarPage() {
   const [amount, setAmount] = useState('');
 
   useEffect(() => {
-    const bangkokToday = toBangkokDateString();
-    const [y, m] = bangkokToday.split('-').map(Number);
-    setTodayDate(bangkokToday);
-    setSelectedDate(bangkokToday);
-    setViewYear(y);
-    setViewMonth0(m - 1);
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      const bangkokToday = toBangkokDateString();
+      const [y, m] = bangkokToday.split('-').map(Number);
+      setTodayDate(bangkokToday);
+      setSelectedDate(bangkokToday);
+      setViewYear(y);
+      setViewMonth0(m - 1);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const monthKey = `${viewYear}-${String(viewMonth0 + 1).padStart(2, '0')}`;
@@ -55,8 +62,16 @@ export default function CalendarPage() {
   }, [householdId, monthKey, todayDate]);
 
   useEffect(() => {
-    void loadCalendar();
-  }, [loadCalendar, transactions]);
+    let active = true;
+    void getMonthlyFinancialCalendar(householdId, monthKey, todayDate).then((res) => {
+      if (!active) return;
+      setItems(res.items);
+      setSummary(res.summary);
+    });
+    return () => {
+      active = false;
+    };
+  }, [householdId, monthKey, todayDate, transactions]);
 
   const cells = useMemo(
     () => buildMonthGrid(viewYear, viewMonth0),

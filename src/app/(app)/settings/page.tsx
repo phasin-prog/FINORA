@@ -52,8 +52,14 @@ export default function SettingsPage() {
   }, [householdId]);
 
   useEffect(() => {
-    void loadOutbox();
-  }, [loadOutbox, transactions, pendingSyncCount]);
+    let active = true;
+    void listOutboxItems(householdId).then((items) => {
+      if (active) setOutboxItems(items);
+    });
+    return () => {
+      active = false;
+    };
+  }, [householdId, transactions, pendingSyncCount]);
 
   function handleExportCsv() {
     const header = [

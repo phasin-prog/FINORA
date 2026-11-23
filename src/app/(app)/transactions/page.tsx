@@ -37,7 +37,13 @@ export default function TransactionsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    setTodayDate(toBangkokDateString());
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (active) setTodayDate(toBangkokDateString());
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const todayExpense = useMemo(() => {

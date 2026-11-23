@@ -59,20 +59,19 @@ export default function DashboardPage() {
   const [dailySafeToSpend, setDailySafeToSpend] = useState<Decimal | null>(null);
 
   useEffect(() => {
-    setAnchorDate(new Date());
-  }, []);
-
-  useEffect(() => {
-    if (!anchorDate) return;
-    const todayStr = anchorDate.toISOString().slice(0, 10);
+    let active = true;
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
     const daysInMonth = new Date(
-      anchorDate.getFullYear(),
-      anchorDate.getMonth() + 1,
+      now.getFullYear(),
+      now.getMonth() + 1,
       0
     ).getDate();
-    const remainingDays = Math.max(1, daysInMonth - anchorDate.getDate() + 1);
+    const remainingDays = Math.max(1, daysInMonth - now.getDate() + 1);
 
     void evaluateBudgets(householdId).then((evals) => {
+      if (!active) return;
+      setAnchorDate((prev) => prev ?? now);
       const totalBudget = evals.find(
         (b) => b.category_id === null && b.period_start <= todayStr && b.period_end >= todayStr
       );
@@ -84,7 +83,11 @@ export default function DashboardPage() {
         setDailySafeToSpend(null);
       }
     });
-  }, [householdId, anchorDate, transactions]);
+
+    return () => {
+      active = false;
+    };
+  }, [householdId, transactions]);
 
   const range = useMemo(
     () => getPeriodRange(period, anchorDate),

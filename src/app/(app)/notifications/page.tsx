@@ -35,8 +35,19 @@ export default function NotificationsPage() {
   }, [householdId, userId]);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    let active = true;
+    void Promise.all([
+      evaluateAndGenerateNotifications(householdId, userId),
+      listPreferencesForUser(userId),
+    ]).then(([notifs, prefList]) => {
+      if (!active) return;
+      setItems(notifs);
+      setPrefs(prefList);
+    });
+    return () => {
+      active = false;
+    };
+  }, [householdId, userId]);
 
   async function handleMarkRead(id: string) {
     await markNotificationAsRead(id);

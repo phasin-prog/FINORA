@@ -76,17 +76,23 @@ export function useFinoraStore(): FinoraStoreState {
   }, [householdId, refresh]);
 
   useEffect(() => {
-    void refresh();
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (active) {
+        void refresh();
+      }
+    });
 
     const updateOnline = () => setIsOnline(navigator.onLine);
     window.addEventListener('online', updateOnline);
     window.addEventListener('offline', updateOnline);
 
     const cleanupSync = registerSafariSyncListeners(householdId, () => {
-      void refresh();
+      if (active) void refresh();
     });
 
     return () => {
+      active = false;
       window.removeEventListener('online', updateOnline);
       window.removeEventListener('offline', updateOnline);
       cleanupSync();

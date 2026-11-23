@@ -19,7 +19,7 @@ export function PwaSupport() {
     const dismissed = localStorage.getItem('finora_ios_install_dismissed') === '1';
 
     if (isIos && !isStandalone && !dismissed) {
-      setShowIosBanner(true);
+      void Promise.resolve().then(() => setShowIosBanner(true));
     }
   }, []);
 
