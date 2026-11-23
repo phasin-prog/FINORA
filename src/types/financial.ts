@@ -44,6 +44,8 @@ export interface FinancialAccount {
   name: string;
   account_type: AccountType;
   institution?: string | null;
+  account_number?: string | null;
+  icon?: string | null;
   currency_code: string;
   opening_balance: string; // NUMERIC string, never float
   owner_user_id?: string | null;
@@ -174,4 +176,14 @@ export interface DebtPayment {
   interest_paid: string;
   total_paid: string;
   created_at: string;
+}
+
+export interface DebtSchedule {
+  id: string;
+  liability_id: string;
+  installment_no: number;
+  due_date: string;
+  principal_due: string;
+  interest_due: string;
+  is_paid: boolean;
 }

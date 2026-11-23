@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { useFinora } from '@/components/layout/FinoraProvider';
+import { createCategory } from '@/modules/categories/service';
 import { createLocalTransaction } from '@/modules/transactions/service';
 import type { TransactionType } from '@/types/financial';
 
@@ -29,6 +30,8 @@ export function QuickTransactionSheet() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
 
   const filteredCategories = categories.filter((c) =>
     txType === 'income' ? c.category_type === 'INCOME' : c.category_type === 'EXPENSE'
@@ -179,7 +182,46 @@ export function QuickTransactionSheet() {
                     {cat.name}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setShowNewCat((v) => !v)}
+                  className="px-2.5 py-1.5 text-xs font-medium rounded-full border border-dashed border-border text-muted hover:text-primary hover:border-primary/40 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  หมวดหมู่ใหม่
+                </button>
               </div>
+              {showNewCat && (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    placeholder="ชื่อหมวดหมู่ใหม่..."
+                    className="flex-1 px-3 py-1.5 text-xs bg-background border border-border rounded-[8px] text-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!newCatName.trim()) return;
+                      const created = await createCategory({
+                        householdId,
+                        name: newCatName.trim(),
+                        categoryType: txType === 'income' ? 'INCOME' : 'EXPENSE',
+                        icon: 'tag',
+                        color: txType === 'income' ? '#39846C' : '#202B27',
+                      });
+                      await refresh();
+                      setCategoryId(created.id);
+                      setNewCatName('');
+                      setShowNewCat(false);
+                    }}
+                    className="px-3 py-1.5 rounded-[8px] bg-accent text-white text-xs font-medium"
+                  >
+                    เพิ่ม
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div>

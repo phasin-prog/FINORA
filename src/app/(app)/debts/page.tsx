@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Decimal from 'decimal.js';
-import { Plus, CreditCard } from 'lucide-react';
+import { Calculator, CreditCard, Plus } from 'lucide-react';
 import { MobileShell } from '@/components/layout/MobileShell';
 import { useFinora } from '@/components/layout/FinoraProvider';
 import { formatTHB, toDecimal } from '@/lib/utilities/money';
@@ -11,12 +11,30 @@ import {
   listLiabilities,
   recordDebtPayment,
 } from '@/modules/liabilities/service';
+import {
+  calculateInstallmentPlan,
+  calculateSpendingAffordability,
+  createInstallmentLiability,
+} from '@/modules/liabilities/installment';
 import type { DebtType, Liability } from '@/types/financial';
 
 export default function DebtsPage() {
   const { householdId, userId, accounts, categories, refresh } = useFinora();
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [showCalc, setShowCalc] = useState(false);
+
+  // Installment & Spending Calculator state
+  const [calcItemName, setCalcItemName] = useState('');
+  const [calcCreditor, setCalcCreditor] = useState('บัตรเครดิต');
+  const [calcTotalPrice, setCalcTotalPrice] = useState('15000');
+  const [calcDownPayment, setCalcDownPayment] = useState('0');
+  const [calcRate, setCalcRate] = useState('0');
+  const [calcMonths, setCalcMonths] = useState(10);
+  const [calcMode, setCalcMode] = useState<'flat' | 'reducing'>('flat');
+  const [calcIncome, setCalcIncome] = useState('25000');
+  const [calcMonthlyBudget, setCalcMonthlyBudget] = useState('15000');
+  const [calcSpent, setCalcSpent] = useState('0');
 
   // Add form
   const [creditorName, setCreditorName] = useState('');
@@ -56,6 +74,69 @@ export default function DebtsPage() {
   const totalOutstanding = liabilities
     .filter((l) => l.status === 'active')
     .reduce((acc, l) => acc.plus(toDecimal(l.outstanding_balance)), new Decimal(0));
+
+  const calcResult = useMemo(() => {
+    try {
+      const plan = calculateInstallmentPlan({
+        totalPrice: calcTotalPrice || '0',
+        downPayment: calcDownPayment || '0',
+        annualInterestRate: calcRate || '0',
+        months: calcMonths,
+        interestMode: calcMode,
+        firstDueDate: paymentDate || '2026-12-01',
+      });
+      const afford = calculateSpendingAffordability({
+        monthlyIncome: calcIncome || '0',
+        monthlyBudgetLimit: calcMonthlyBudget || '0',
+        spentThisMonth: calcSpent || '0',
+        remainingDaysInMonth: 15,
+        newMonthlyInstallment: plan.monthlyPayment,
+      });
+      return { plan, afford, error: null as string | null };
+    } catch (e) {
+      return {
+        plan: null,
+        afford: null,
+        error: e instanceof Error ? e.message : 'ข้อมูลไม่ถูกต้อง',
+      };
+    }
+  }, [
+    calcTotalPrice,
+    calcDownPayment,
+    calcRate,
+    calcMonths,
+    calcMode,
+    paymentDate,
+    calcIncome,
+    calcMonthlyBudget,
+    calcSpent,
+  ]);
+
+  async function handleSaveInstallmentPlan() {
+    if (!calcResult.plan) return;
+    setError(null);
+    try {
+      await createInstallmentLiability({
+        householdId,
+        creditorName: calcCreditor.trim() || 'ผ่อนชำระ',
+        debtName: calcItemName.trim() || `ผ่อน ${calcMonths} เดือน`,
+        debtType: 'credit_card',
+        calcInput: {
+          totalPrice: calcTotalPrice,
+          downPayment: calcDownPayment,
+          annualInterestRate: calcRate,
+          months: calcMonths,
+          interestMode: calcMode,
+          firstDueDate: paymentDate || '2026-12-01',
+        },
+      });
+      setCalcItemName('');
+      setShowCalc(false);
+      await loadDebts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'บันทึกแผนผ่อนชำระไม่สำเร็จ');
+    }
+  }
 
   async function handleCreateDebt(e: React.FormEvent) {
     e.preventDefault();
@@ -116,22 +197,207 @@ export default function DebtsPage() {
   return (
     <MobileShell title="หนี้สินและการชำระ">
       <div className="space-y-4">
-        <section className="bg-surface border border-border rounded-[18px] p-5 flex items-center justify-between">
+        <section className="bg-surface border border-border rounded-[18px] p-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs text-muted">ยอดหนี้คงเหลือรวม</p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-danger">
               {formatTHB(totalOutstanding)}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowAdd((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-primary text-primary-foreground text-xs font-medium"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            เพิ่มหนี้สิน
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowCalc((v) => !v);
+                setShowAdd(false);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] border border-border bg-background text-primary text-xs font-medium"
+            >
+              <Calculator className="w-3.5 h-3.5 text-accent" />
+              คำนวณผ่อน &amp; การใช้จ่าย
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAdd((v) => !v);
+                setShowCalc(false);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-primary text-primary-foreground text-xs font-medium"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              เพิ่มหนี้สิน
+            </button>
+          </div>
         </section>
+
+        {showCalc && (
+          <section className="bg-surface border border-border rounded-[18px] p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-primary">
+              คำนวณการผ่อนชำระ &amp; ผลกระทบต่อการใช้จ่าย
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-muted mb-1">รายการที่จะผ่อน</label>
+                <input
+                  type="text"
+                  value={calcItemName}
+                  onChange={(e) => setCalcItemName(e.target.value)}
+                  placeholder="เช่น iPhone, เครื่องใช้ไฟฟ้า"
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-[8px]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1">บัตร / ผู้ให้ผ่อน</label>
+                <input
+                  type="text"
+                  value={calcCreditor}
+                  onChange={(e) => setCalcCreditor(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-[8px]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-xs text-muted mb-1">ราคาสินค้า</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={calcTotalPrice}
+                  onChange={(e) => setCalcTotalPrice(e.target.value)}
+                  className="w-full px-2.5 py-2 text-sm tabular-nums bg-background border border-border rounded-[8px]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1">เงินดาวน์</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={calcDownPayment}
+                  onChange={(e) => setCalcDownPayment(e.target.value)}
+                  className="w-full px-2.5 py-2 text-sm tabular-nums bg-background border border-border rounded-[8px]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1">ดอกเบี้ย %/ปี</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={calcRate}
+                  onChange={(e) => setCalcRate(e.target.value)}
+                  className="w-full px-2.5 py-2 text-sm tabular-nums bg-background border border-border rounded-[8px]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-muted mb-1">จำนวนงวด (เดือน)</label>
+                <select
+                  value={calcMonths}
+                  onChange={(e) => setCalcMonths(Number(e.target.value))}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-[8px]"
+                >
+                  {[3, 6, 10, 12, 18, 24, 36].map((m) => (
+                    <option key={m} value={m}>
+                      {m} เดือน
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1">วิธีคิดดอกเบี้ย</label>
+                <select
+                  value={calcMode}
+                  onChange={(e) => setCalcMode(e.target.value as 'flat' | 'reducing')}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-[8px]"
+                >
+                  <option value="flat">คงที่ (Flat / 0%)</option>
+                  <option value="reducing">ลดต้นลดดอก (Reducing)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border">
+              <div>
+                <label className="block text-[11px] text-muted mb-1">รายได้/เดือน</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={calcIncome}
+                  onChange={(e) => setCalcIncome(e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs tabular-nums bg-background border border-border rounded-[8px]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-muted mb-1">งบใช้จ่าย/เดือน</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={calcMonthlyBudget}
+                  onChange={(e) => setCalcMonthlyBudget(e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs tabular-nums bg-background border border-border rounded-[8px]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-muted mb-1">ใช้ไปแล้วเดือนนี้</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={calcSpent}
+                  onChange={(e) => setCalcSpent(e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs tabular-nums bg-background border border-border rounded-[8px]"
+                />
+              </div>
+            </div>
+
+            {calcResult.error ? (
+              <p className="text-xs text-danger">{calcResult.error}</p>
+            ) : (
+              calcResult.plan &&
+              calcResult.afford && (
+                <div className="p-3 rounded-[12px] bg-background border border-border space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted">ค่างวดต่อเดือน</span>
+                    <span className="font-semibold tabular-nums text-primary text-sm">
+                      {formatTHB(calcResult.plan.monthlyPayment)} / เดือน
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">ดอกเบี้ยรวม / ยอดชำระรวม</span>
+                    <span className="tabular-nums text-primary">
+                      {formatTHB(calcResult.plan.totalInterest)} /{' '}
+                      {formatTHB(calcResult.plan.totalPayable)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">ภาระผ่อนต่อรายได้ / เงินใช้ได้ต่อวัน</span>
+                    <span
+                      className={`font-semibold tabular-nums ${
+                        calcResult.afford.status === 'over_budget'
+                          ? 'text-danger'
+                          : calcResult.afford.status === 'tight'
+                            ? 'text-warning'
+                            : 'text-accent'
+                      }`}
+                    >
+                      {calcResult.afford.debtServiceRatioPct}% ·{' '}
+                      {formatTHB(calcResult.afford.dailySafeAfterInstallment)}/วัน
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveInstallmentPlan()}
+                    className="w-full mt-2 py-2 rounded-[8px] bg-accent text-white text-xs font-medium"
+                  >
+                    บันทึกเป็นแผนผ่อนชำระในระบบหนี้สิน
+                  </button>
+                </div>
+              )
+            )}
+          </section>
+        )}
 
         {showAdd && (
           <form

@@ -3,6 +3,7 @@ import type {
   Budget,
   Category,
   DebtPayment,
+  DebtSchedule,
   FinancialAccount,
   JournalEntry,
   JournalLine,
@@ -41,6 +42,7 @@ export class FinoraLocalDB extends Dexie {
   budgets!: Table<Budget, string>;
   liabilities!: Table<Liability, string>;
   debt_payments!: Table<DebtPayment, string>;
+  debt_schedules!: Table<DebtSchedule, string>;
   calendar_events!: Table<CalendarEventRecord, string>;
   notification_preferences!: Table<NotificationPreferenceRecord, string>;
   notifications!: Table<NotificationRecord, string>;
@@ -67,6 +69,10 @@ export class FinoraLocalDB extends Dexie {
       calendar_events: 'id, household_id, event_date, event_type, status, related_liability_id',
       notification_preferences: 'id, user_id, notification_type, is_enabled',
       notifications: 'id, user_id, household_id, status, priority, scheduled_at, deduplication_key',
+    });
+
+    this.version(4).stores({
+      debt_schedules: 'id, liability_id, installment_no, due_date, is_paid',
     });
   }
 }

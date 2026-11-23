@@ -462,6 +462,103 @@ export async function cancelDraftTransaction(txId: string): Promise<Transaction>
 }
 
 /**
+ * User-friendly edit for any transaction (including posted ones):
+ * - Draft/Pending: edits in place.
+ * - Posted: performs an audit-safe Reversal + Re-entry with the updated amount/details
+ *   so the Double-Entry General Ledger remains 100% balanced and traceable.
+ */
+export async function updateOrCorrectTransaction(
+  txId: string,
+  patch: {
+    amount?: string;
+    transactionDate?: string;
+    description?: string;
+    categoryId?: string | null;
+    accountId?: string;
+    toAccountId?: string | null;
+  },
+  actorUserId: string
+): Promise<Transaction> {
+  const existing = await localDb.transactions.get(txId);
+  if (!existing) {
+    throw new TransactionError('ไม่พบรายการธุรกรรม');
+  }
+
+  if (existing.status === 'draft' || existing.status === 'pending') {
+    return editDraftTransaction(txId, {
+      amount: patch.amount,
+      transaction_date: patch.transactionDate,
+      description: patch.description,
+      category_id: patch.categoryId,
+      account_id: patch.accountId,
+    });
+  }
+
+  if (existing.status !== 'posted') {
+    throw new TransactionError(`ไม่สามารถแก้ไขรายการที่มีสถานะ ${existing.status} ได้`);
+  }
+
+  await reversePostedTransaction(
+    existing.id,
+    patch.transactionDate ?? existing.transaction_date,
+    'แก้ไขรายการ'
+  );
+
+  const { transaction: corrected } = await createLocalTransaction(
+    {
+      householdId: existing.household_id,
+      transactionType: existing.transaction_type,
+      amount: patch.amount ?? existing.amount,
+      currencyCode: existing.currency_code,
+      transactionDate: patch.transactionDate ?? existing.transaction_date,
+      accountId: patch.accountId ?? existing.account_id,
+      toAccountId: patch.toAccountId ?? null,
+      categoryId:
+        patch.categoryId !== undefined ? patch.categoryId : existing.category_id,
+      description:
+        patch.description !== undefined ? patch.description : existing.description,
+      notes: existing.notes ?? null,
+      tags: existing.tags ?? [],
+      idempotencyKey: crypto.randomUUID(),
+      asDraft: false,
+    },
+    actorUserId
+  );
+
+  return corrected;
+}
+
+/**
+ * Deletes a draft/cancelled transaction, or reverses a posted transaction
+ * so account balances are accurately restored.
+ */
+export async function deleteOrReverseTransaction(
+  txId: string,
+  reversalDate: string
+): Promise<{ mode: 'deleted' | 'reversed' }> {
+  const existing = await localDb.transactions.get(txId);
+  if (!existing) {
+    throw new TransactionError('ไม่พบรายการธุรกรรม');
+  }
+
+  if (
+    existing.status === 'draft' ||
+    existing.status === 'pending' ||
+    existing.status === 'cancelled'
+  ) {
+    await localDb.transactions.delete(txId);
+    return { mode: 'deleted' };
+  }
+
+  if (existing.status === 'posted') {
+    await reversePostedTransaction(txId, reversalDate, 'ลบรายการโดยผู้ใช้');
+    return { mode: 'reversed' };
+  }
+
+  throw new TransactionError('รายการนี้ถูกกลับรายการไปแล้ว');
+}
+
+/**
  * Queries transactions with search, filters, and Decimal-safe amount sorting (Screen 03).
  */
 export async function queryTransactions(

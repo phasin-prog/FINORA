@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -9,14 +9,21 @@ import {
   ChevronRight,
   CreditCard,
   Download,
+  HardDriveDownload,
   LogIn,
   RefreshCw,
+  Tag,
   Target,
+  Upload,
   Wallet,
 } from 'lucide-react';
 import { MobileShell } from '@/components/layout/MobileShell';
 import { useFinora } from '@/components/layout/FinoraProvider';
 import { formatTHB } from '@/lib/utilities/money';
+import {
+  exportFullBackupJson,
+  restoreFullBackupJson,
+} from '@/offline/backup';
 import type { OutboxItem } from '@/offline/indexeddb/db';
 import {
   listOutboxItems,
@@ -35,6 +42,9 @@ export default function SettingsPage() {
     refresh,
   } = useFinora();
   const [outboxItems, setOutboxItems] = useState<OutboxItem[]>([]);
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadOutbox = useCallback(async () => {
     const items = await listOutboxItems(householdId);
@@ -77,11 +87,74 @@ export default function SettingsPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function handleExportJsonBackup() {
+    setBackupError(null);
+    setBackupMessage(null);
+    const json = await exportFullBackupJson();
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `finora-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setBackupMessage('สำรองข้อมูลไฟล์ JSON เรียบร้อยแล้ว');
+  }
+
+  async function handleRestoreJsonBackup(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBackupError(null);
+    setBackupMessage(null);
+    try {
+      const text = await file.text();
+      const res = await restoreFullBackupJson(text);
+      await refresh();
+      setBackupMessage(
+        `กู้คืนข้อมูลสำเร็จ: ${res.accountsRestored} บัญชี, ${res.transactionsRestored} รายการ`
+      );
+    } catch (err) {
+      setBackupError(
+        err instanceof Error ? err.message : 'ไฟล์สำรองข้อมูลไม่ถูกต้อง'
+      );
+    } finally {
+      e.target.value = '';
+    }
+  }
+
   return (
     <MobileShell title="บัญชีและการตั้งค่า">
       <div className="space-y-5">
         {/* Quick Links to Calendar, Notifications, Budgets & Debts */}
         <section className="bg-surface border border-border rounded-[18px] divide-y divide-border overflow-hidden">
+          <Link
+            href="/accounts"
+            className="px-5 py-4 flex items-center justify-between hover:bg-background/60 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Wallet className="w-4 h-4 text-accent" />
+              <div>
+                <p className="text-sm font-semibold text-primary">จัดการบัญชี (Accounts)</p>
+                <p className="text-xs text-muted">เพิ่ม/แก้ไขบัญชีและหมายเลขธนาคาร</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted" />
+          </Link>
+
+          <Link
+            href="/categories"
+            className="px-5 py-4 flex items-center justify-between hover:bg-background/60 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Tag className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-sm font-semibold text-primary">จัดการหมวดหมู่ (Categories)</p>
+                <p className="text-xs text-muted">เพิ่มหมวดหมู่รายรับ-รายจ่ายและเลือกไอคอน</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted" />
+          </Link>
+
           <Link
             href="/calendar"
             className="px-5 py-4 flex items-center justify-between hover:bg-background/60 transition-colors"
@@ -153,7 +226,10 @@ export default function SettingsPage() {
               >
                 <div>
                   <p className="font-medium text-primary">{acc.name}</p>
-                  <p className="text-xs text-muted uppercase">{acc.account_type}</p>
+                  <p className="text-xs text-muted uppercase">
+                    {acc.institution || acc.account_type}
+                    {acc.account_number ? ` · ${acc.account_number}` : ''}
+                  </p>
                 </div>
                 <span className="font-semibold tabular-nums text-primary">
                   {formatTHB(acc.current_balance)}
@@ -180,6 +256,39 @@ export default function SettingsPage() {
             <Download className="w-4 h-4" />
             ส่งออกข้อมูล CSV ({transactions.length} รายการ)
           </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => void handleExportJsonBackup()}
+              className="py-2.5 px-3 rounded-[10px] border border-border bg-background text-primary text-xs font-medium flex items-center justify-center gap-1.5 hover:border-primary/40"
+            >
+              <HardDriveDownload className="w-4 h-4 text-accent" />
+              สำรองข้อมูล (.json)
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="py-2.5 px-3 rounded-[10px] border border-border bg-background text-primary text-xs font-medium flex items-center justify-center gap-1.5 hover:border-primary/40"
+            >
+              <Upload className="w-4 h-4 text-warning" />
+              กู้คืนข้อมูล (.json)
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => void handleRestoreJsonBackup(e)}
+              className="hidden"
+            />
+          </div>
+
+          {backupMessage && (
+            <p className="text-xs text-accent">{backupMessage}</p>
+          )}
+          {backupError && (
+            <p className="text-xs text-danger">{backupError}</p>
+          )}
 
           <Link
             href="/login"

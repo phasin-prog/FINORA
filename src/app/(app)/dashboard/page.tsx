@@ -9,6 +9,7 @@ import { useFinora } from '@/components/layout/FinoraProvider';
 import { LazySpendingDoughnutChart } from '@/components/charts/LazyCharts';
 import { formatTHB, toDecimal } from '@/lib/utilities/money';
 import { calculateFinancialPosition } from '@/modules/accounting/engine';
+import { evaluateBudgets } from '@/modules/budgets/service';
 
 type PeriodKey = 'this_month' | 'last_month' | '3m' | '6m';
 
@@ -44,13 +45,39 @@ function getPeriodRange(
 }
 
 export default function DashboardPage() {
-  const { accounts, categories, transactions, loading, openEntry } = useFinora();
+  const { householdId, accounts, categories, transactions, loading, openEntry } =
+    useFinora();
   const [period, setPeriod] = useState<PeriodKey>('this_month');
   const [anchorDate, setAnchorDate] = useState<Date | null>(null);
+  const [dailySafeToSpend, setDailySafeToSpend] = useState<Decimal | null>(null);
 
   useEffect(() => {
     setAnchorDate(new Date());
   }, []);
+
+  useEffect(() => {
+    if (!anchorDate) return;
+    const todayStr = anchorDate.toISOString().slice(0, 10);
+    const daysInMonth = new Date(
+      anchorDate.getFullYear(),
+      anchorDate.getMonth() + 1,
+      0
+    ).getDate();
+    const remainingDays = Math.max(1, daysInMonth - anchorDate.getDate() + 1);
+
+    void evaluateBudgets(householdId).then((evals) => {
+      const totalBudget = evals.find(
+        (b) => b.category_id === null && b.period_start <= todayStr && b.period_end >= todayStr
+      );
+      if (totalBudget) {
+        setDailySafeToSpend(
+          toDecimal(totalBudget.remaining_amount).div(remainingDays)
+        );
+      } else {
+        setDailySafeToSpend(null);
+      }
+    });
+  }, [householdId, anchorDate, transactions]);
 
   const range = useMemo(
     () => getPeriodRange(period, anchorDate),
@@ -187,6 +214,19 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+
+          {dailySafeToSpend !== null && (
+            <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs">
+              <span className="text-muted">งบใช้จ่ายคงเหลือต่อวัน (Safe-to-Spend)</span>
+              <span
+                className={`font-semibold tabular-nums ${
+                  dailySafeToSpend.gte(0) ? 'text-accent' : 'text-danger'
+                }`}
+              >
+                {formatTHB(dailySafeToSpend)} / วัน
+              </span>
+            </div>
+          )}
         </section>
 
         {/* Spending Breakdown */}
