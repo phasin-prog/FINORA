@@ -5,6 +5,8 @@ export interface SyncSummary {
   conflictCount: number;
   failedCount: number;
   offline: boolean;
+  requiresAuth?: boolean;
+  error?: string;
 }
 
 /**
@@ -43,11 +45,23 @@ export async function syncOutbox(householdId: string): Promise<SyncSummary> {
   });
 
   if (!response.ok) {
+    let errorMsg = `ซิงค์ไม่สำเร็จ (HTTP ${response.status})`;
+    try {
+      const errBody = (await response.json()) as { error?: string };
+      if (errBody?.error) errorMsg = errBody.error;
+    } catch {
+      // ignore non-JSON body
+    }
     return {
       syncedCount: 0,
       conflictCount: 0,
       failedCount: pendingItems.length,
       offline: false,
+      requiresAuth: response.status === 401,
+      error:
+        response.status === 401
+          ? 'ยังไม่ได้เข้าสู่ระบบ Cloud (ข้อมูลยังปลอดภัยอยู่ในเครื่อง)'
+          : errorMsg,
     };
   }
 

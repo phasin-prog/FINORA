@@ -8,7 +8,11 @@ import {
 } from '@/offline/bootstrap';
 import { localDb } from '@/offline/indexeddb/db';
 import { getPendingOutboxCount } from '@/offline/outbox/queue';
-import { registerSafariSyncListeners, syncOutbox } from '@/offline/sync/engine';
+import {
+  registerSafariSyncListeners,
+  syncOutbox,
+  type SyncSummary,
+} from '@/offline/sync/engine';
 import {
   computeAccountBalances,
   queryTransactions,
@@ -29,7 +33,7 @@ export interface FinoraStoreState {
   isSyncing: boolean;
   loading: boolean;
   refresh: () => Promise<void>;
-  triggerSync: () => Promise<void>;
+  triggerSync: () => Promise<SyncSummary>;
 }
 
 export function useFinoraStore(): FinoraStoreState {
@@ -65,11 +69,20 @@ export function useFinoraStore(): FinoraStoreState {
     setLoading(false);
   }, [householdId, userId]);
 
-  const triggerSync = useCallback(async () => {
+  const triggerSync = useCallback(async (): Promise<SyncSummary> => {
     setIsSyncing(true);
     try {
-      await syncOutbox(householdId);
+      const summary = await syncOutbox(householdId);
       await refresh();
+      return summary;
+    } catch (err) {
+      return {
+        syncedCount: 0,
+        conflictCount: 0,
+        failedCount: 0,
+        offline: false,
+        error: err instanceof Error ? err.message : 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้',
+      };
     } finally {
       setIsSyncing(false);
     }

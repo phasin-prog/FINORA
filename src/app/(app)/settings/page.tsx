@@ -26,7 +26,9 @@ import {
 } from '@/offline/backup';
 import type { OutboxItem } from '@/offline/indexeddb/db';
 import {
+  clearOutboxForHousehold,
   listOutboxItems,
+  removeOutboxItem,
   resolveConflictDiscardLocal,
   resolveConflictKeepLocal,
   retryOutboxItem,
@@ -42,6 +44,7 @@ export default function SettingsPage() {
     refresh,
   } = useFinora();
   const [outboxItems, setOutboxItems] = useState<OutboxItem[]>([]);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -308,22 +311,52 @@ export default function SettingsPage() {
         {/* Outbox & Conflict Inspector */}
         {outboxItems.length > 0 && (
           <section className="bg-surface border border-border rounded-[18px] p-5 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-warning" />
                 <h2 className="text-sm font-semibold text-primary">
                   คิวซิงค์และรายการขัดแย้ง ({outboxItems.length})
                 </h2>
               </div>
-              <button
-                type="button"
-                onClick={() => void triggerSync()}
-                className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                ซิงค์ตอนนี้
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const summary = await triggerSync();
+                    if (summary.error) {
+                      setSyncFeedback(summary.error);
+                    } else if (summary.offline) {
+                      setSyncFeedback('ขณะนี้ออฟไลน์ กรุณาเชื่อมต่ออินเทอร์เน็ต');
+                    } else if (summary.syncedCount > 0) {
+                      setSyncFeedback(`ซิงค์สำเร็จ ${summary.syncedCount} รายการ`);
+                    }
+                    await loadOutbox();
+                  }}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  ซิงค์ตอนนี้
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await clearOutboxForHousehold(householdId);
+                    setSyncFeedback('ล้างคิวซิงค์ในเครื่องเรียบร้อยแล้ว');
+                    await refresh();
+                    await loadOutbox();
+                  }}
+                  className="text-xs font-medium text-muted hover:text-danger"
+                >
+                  ล้างคิวทั้งหมด
+                </button>
+              </div>
             </div>
+
+            {syncFeedback && (
+              <p className="text-xs text-warning bg-warning/10 border border-warning/30 rounded-[8px] px-3 py-2">
+                {syncFeedback}
+              </p>
+            )}
 
             <ul className="divide-y divide-border">
               {outboxItems.map((item) => (
@@ -372,17 +405,35 @@ export default function SettingsPage() {
                         </button>
                       </>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await retryOutboxItem(item.id);
-                          await triggerSync();
-                          await loadOutbox();
-                        }}
-                        className="px-2.5 py-1 rounded-[8px] border border-border text-primary font-medium"
-                      >
-                        ลองส่งใหม่
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await retryOutboxItem(item.id);
+                            const summary = await triggerSync();
+                            if (summary.error) {
+                              setSyncFeedback(summary.error);
+                            } else if (summary.syncedCount > 0) {
+                              setSyncFeedback(`ซิงค์สำเร็จ ${summary.syncedCount} รายการ`);
+                            }
+                            await loadOutbox();
+                          }}
+                          className="px-2.5 py-1 rounded-[8px] border border-border text-primary font-medium"
+                        >
+                          ลองส่งใหม่
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await removeOutboxItem(item.id);
+                            await refresh();
+                            await loadOutbox();
+                          }}
+                          className="px-2.5 py-1 rounded-[8px] border border-border text-muted hover:text-danger font-medium"
+                        >
+                          นำออกจากคิว
+                        </button>
+                      </>
                     )}
                   </div>
                 </li>

@@ -9,6 +9,33 @@ export async function listOutboxItems(
     .sortBy('created_at');
 }
 
+export async function removeOutboxItem(outboxId: string): Promise<void> {
+  const item = await localDb.outbox.get(outboxId);
+  if (!item) return;
+  await localDb.transaction('rw', [localDb.outbox, localDb.transactions], async () => {
+    await localDb.outbox.delete(outboxId);
+    if (item.entity_type === 'transaction') {
+      await localDb.transactions.update(item.entity_id, {
+        sync_status: 'synced',
+      });
+    }
+  });
+}
+
+export async function clearOutboxForHousehold(householdId: string): Promise<void> {
+  const items = await listOutboxItems(householdId);
+  await localDb.transaction('rw', [localDb.outbox, localDb.transactions], async () => {
+    for (const item of items) {
+      await localDb.outbox.delete(item.id);
+      if (item.entity_type === 'transaction') {
+        await localDb.transactions.update(item.entity_id, {
+          sync_status: 'synced',
+        });
+      }
+    }
+  });
+}
+
 export async function retryOutboxItem(outboxId: string): Promise<void> {
   const item = await localDb.outbox.get(outboxId);
   if (!item) return;
