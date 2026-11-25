@@ -3,6 +3,7 @@ import {
   createSupabaseBrowserClient,
   getClientAuthHeaders,
 } from '@/lib/supabase/client';
+import { pushLocalDataToCloudHousehold } from '@/offline/sync/migrate-local';
 import type {
   Budget,
   Category,
@@ -106,6 +107,29 @@ export async function pullCloudHouseholdState(): Promise<CloudBootstrapResult> {
 
   if (!payload.authenticated) {
     return { authenticated: false };
+  }
+
+  // If Cloud has 0 transactions yet, auto-migrate local-only data (e.g. from Mobile)
+  if (payload.transactions.length === 0) {
+    const migrated = await pushLocalDataToCloudHousehold({
+      cloudHouseholdId: payload.householdId,
+      cloudAccounts: payload.accounts,
+      cloudCategories: payload.categories,
+    });
+    if (migrated.uploadedTransactions > 0) {
+      const refreshedRes = await fetch('/api/sync/bootstrap', {
+        cache: 'no-store',
+        headers: authHeaders,
+      });
+      if (refreshedRes.ok) {
+        const refreshedPayload = (await refreshedRes.json()) as typeof payload;
+        payload.accounts = refreshedPayload.accounts;
+        payload.categories = refreshedPayload.categories;
+        payload.transactions = refreshedPayload.transactions;
+        payload.journalEntries = refreshedPayload.journalEntries;
+        payload.journalLines = refreshedPayload.journalLines;
+      }
+    }
   }
 
   localStorage.setItem(ACTIVE_HOUSEHOLD_KEY, payload.householdId);
