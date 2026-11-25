@@ -172,6 +172,59 @@ export default function SettingsPage() {
   return (
     <MobileShell title="บัญชีและการตั้งค่า">
       <div className="space-y-5">
+        {/* User Account & Log In / Log Out Card (Top Position) */}
+        <section className="bg-surface border border-border rounded-[18px] p-5">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-muted font-medium mb-2">
+            บัญชีผู้ใช้ (ACCOUNT)
+          </p>
+          {isAuthenticated ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
+                  <p className="text-sm font-semibold text-primary truncate">
+                    {authEmail || 'บัญชีผู้ใช้ FINORA'}
+                  </p>
+                </div>
+                <p className="text-xs text-muted mt-0.5 truncate">
+                  สถานะ: เข้าสู่ระบบแล้ว · Sync เปิดใช้งาน
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const supabase = createSupabaseBrowserClient();
+                  await supabase.auth.signOut();
+                  localStorage.removeItem(ACTIVE_HOUSEHOLD_KEY);
+                  localStorage.removeItem(ACTIVE_USER_KEY);
+                  localStorage.removeItem(ACTIVE_EMAIL_KEY);
+                  await refresh(true);
+                }}
+                className="px-3.5 py-2 rounded-[10px] border border-danger/30 bg-danger/10 text-danger text-xs font-medium shrink-0 hover:bg-danger/20"
+              >
+                ออกจากระบบ
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-primary">
+                  ยังไม่ได้เข้าสู่ระบบ
+                </p>
+                <p className="text-xs text-muted mt-0.5">
+                  กำลังใช้งานแบบออฟไลน์เฉพาะในเครื่องนี้
+                </p>
+              </div>
+              <Link
+                href="/login"
+                className="px-4 py-2 rounded-[10px] bg-primary text-primary-foreground text-xs font-medium shrink-0 hover:opacity-90"
+              >
+                เข้าสู่ระบบ
+              </Link>
+            </div>
+          )}
+        </section>
+
         {/* Quick Links to Calendar, Notifications, Budgets & Debts */}
         <section className="bg-surface border border-border rounded-[18px] divide-y divide-border overflow-hidden">
           <Link

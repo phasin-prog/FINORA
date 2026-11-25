@@ -11,6 +11,8 @@ import {
   WifiOff,
   RefreshCw,
   CheckCircle2,
+  UserCheck,
+  LogIn,
 } from 'lucide-react';
 import { useFinora } from '@/components/layout/FinoraProvider';
 import { QuickTransactionSheet } from '@/components/forms/QuickTransactionSheet';
@@ -28,6 +30,8 @@ export function MobileShell({
   const pathname = usePathname();
   const {
     openEntry,
+    isAuthenticated,
+    authEmail,
     isOnline,
     pendingSyncCount,
     unreadNotificationsCount,
@@ -57,7 +61,27 @@ export function MobileShell({
             </h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {isAuthenticated ? (
+              <Link
+                href="/settings"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-accent/30 bg-accent/10 text-accent max-w-[120px]"
+                title={`บัญชีผู้ใช้: ${authEmail ?? ''}`}
+              >
+                <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">
+                  {authEmail ? authEmail.split('@')[0] : 'บัญชี'}
+                </span>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-border bg-surface text-primary hover:border-primary/40"
+              >
+                <LogIn className="w-3.5 h-3.5 shrink-0" />
+                <span>Log In</span>
+              </Link>
+            )}
             <NotificationBadge unreadCount={unreadNotificationsCount} />
             <button
               type="button"
