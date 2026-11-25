@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DEFAULT_LOCAL_HOUSEHOLD_ID,
   DEFAULT_LOCAL_USER_ID,
@@ -13,6 +13,7 @@ import {
   syncOutbox,
   type SyncSummary,
 } from '@/offline/sync/engine';
+import { pullCloudHouseholdState } from '@/offline/sync/pull';
 import {
   computeAccountBalances,
   queryTransactions,
@@ -24,6 +25,8 @@ import type { Category, Transaction } from '@/types/financial';
 export interface FinoraStoreState {
   householdId: string;
   userId: string;
+  isAuthenticated: boolean;
+  authEmail: string | null;
   accounts: AccountWithBalance[];
   categories: Category[];
   transactions: Transaction[];
@@ -32,13 +35,15 @@ export interface FinoraStoreState {
   isOnline: boolean;
   isSyncing: boolean;
   loading: boolean;
-  refresh: () => Promise<void>;
+  refresh: (pullFromCloud?: boolean) => Promise<void>;
   triggerSync: () => Promise<SyncSummary>;
 }
 
 export function useFinoraStore(): FinoraStoreState {
-  const householdId = DEFAULT_LOCAL_HOUSEHOLD_ID;
-  const userId = DEFAULT_LOCAL_USER_ID;
+  const [householdId, setHouseholdId] = useState(DEFAULT_LOCAL_HOUSEHOLD_ID);
+  const [userId, setUserId] = useState(DEFAULT_LOCAL_USER_ID);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
 
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -51,14 +56,43 @@ export function useFinoraStore(): FinoraStoreState {
   const [isSyncing, setIsSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
-    await ensureLocalHouseholdInitialized();
+  const hasBootstrappedRef = useRef(false);
+
+  const refresh = useCallback(async (pullFromCloud = false) => {
+    let activeHousehold = householdId;
+    let activeUser = userId;
+
+    if (!hasBootstrappedRef.current || pullFromCloud) {
+      hasBootstrappedRef.current = true;
+      try {
+        const cloud = await pullCloudHouseholdState();
+        if (cloud.authenticated && cloud.householdId && cloud.userId) {
+          activeHousehold = cloud.householdId;
+          activeUser = cloud.userId;
+          setHouseholdId(cloud.householdId);
+          setUserId(cloud.userId);
+          setIsAuthenticated(true);
+          setAuthEmail(cloud.email ?? null);
+        } else {
+          activeHousehold = DEFAULT_LOCAL_HOUSEHOLD_ID;
+          activeUser = DEFAULT_LOCAL_USER_ID;
+          setHouseholdId(DEFAULT_LOCAL_HOUSEHOLD_ID);
+          setUserId(DEFAULT_LOCAL_USER_ID);
+          setIsAuthenticated(false);
+          setAuthEmail(null);
+          await ensureLocalHouseholdInitialized();
+        }
+      } catch {
+        await ensureLocalHouseholdInitialized();
+      }
+    }
+
     const [accBal, cats, txs, pending, notifs] = await Promise.all([
-      computeAccountBalances(householdId),
-      localDb.categories.where('household_id').equals(householdId).sortBy('sort_order'),
-      queryTransactions(householdId, { sortBy: 'date_desc' }),
-      getPendingOutboxCount(householdId),
-      evaluateAndGenerateNotifications(householdId, userId),
+      computeAccountBalances(activeHousehold),
+      localDb.categories.where('household_id').equals(activeHousehold).sortBy('sort_order'),
+      queryTransactions(activeHousehold, { sortBy: 'date_desc' }),
+      getPendingOutboxCount(activeHousehold),
+      evaluateAndGenerateNotifications(activeHousehold, activeUser),
     ]);
 
     setAccounts(accBal);
@@ -73,7 +107,7 @@ export function useFinoraStore(): FinoraStoreState {
     setIsSyncing(true);
     try {
       const summary = await syncOutbox(householdId);
-      await refresh();
+      await refresh(true);
       return summary;
     } catch (err) {
       return {
@@ -92,7 +126,7 @@ export function useFinoraStore(): FinoraStoreState {
     let active = true;
     void Promise.resolve().then(() => {
       if (active) {
-        void refresh();
+        void refresh(true);
       }
     });
 
@@ -101,7 +135,7 @@ export function useFinoraStore(): FinoraStoreState {
     window.addEventListener('offline', updateOnline);
 
     const cleanupSync = registerSafariSyncListeners(householdId, () => {
-      if (active) void refresh();
+      if (active) void refresh(true);
     });
 
     return () => {
@@ -115,6 +149,8 @@ export function useFinoraStore(): FinoraStoreState {
   return {
     householdId,
     userId,
+    isAuthenticated,
+    authEmail,
     accounts,
     categories,
     transactions,
