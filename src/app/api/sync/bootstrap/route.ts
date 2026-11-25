@@ -50,6 +50,7 @@ export async function GET(request: Request) {
       journalEntriesRes,
       budgetsRes,
       liabilitiesRes,
+      calendarEventsRes,
     ] = await Promise.all([
       supabase
         .from('ledger_accounts')
@@ -80,6 +81,10 @@ export async function GET(request: Request) {
         .eq('household_id', householdId),
       supabase
         .from('liabilities')
+        .select('*')
+        .eq('household_id', householdId),
+      supabase
+        .from('calendar_events')
         .select('*')
         .eq('household_id', householdId),
     ]);
@@ -137,6 +142,10 @@ export async function GET(request: Request) {
         interest_rate: String(l.interest_rate),
         minimum_payment: String(l.minimum_payment),
         scheduled_payment: String(l.scheduled_payment),
+      })),
+      calendarEvents: (calendarEventsRes.data ?? []).map((ev) => ({
+        ...ev,
+        amount: ev.amount !== null && ev.amount !== undefined ? String(ev.amount) : null,
       })),
     });
   } catch (err) {

@@ -1,5 +1,6 @@
 import Decimal from 'decimal.js';
 import { z } from 'zod';
+import { getClientAuthHeaders } from '@/lib/supabase/client';
 import { toDecimal, toNumericString } from '@/lib/utilities/money';
 import { localDb } from '@/offline/indexeddb/db';
 import type { Budget, BudgetPeriodType } from '@/types/financial';
@@ -49,11 +50,32 @@ export async function createBudget(rawInput: CreateBudgetInput): Promise<Budget>
   };
 
   await localDb.budgets.add(budget);
+
+  if (typeof window !== 'undefined' && navigator.onLine) {
+    void getClientAuthHeaders().then((authHeaders) =>
+      fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'budget', data: budget }),
+      })
+    ).catch(() => {});
+  }
+
   return budget;
 }
 
 export async function deleteBudget(budgetId: string): Promise<void> {
   await localDb.budgets.delete(budgetId);
+
+  if (typeof window !== 'undefined' && navigator.onLine) {
+    void getClientAuthHeaders().then((authHeaders) =>
+      fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'budget_delete', id: budgetId }),
+      })
+    ).catch(() => {});
+  }
 }
 
 /**

@@ -143,11 +143,17 @@ export async function pushLocalDataToCloudHousehold(params: {
     return { uploadedTransactions: 0 };
   }
 
-  // Mark local seed transactions as migrated by clearing DEFAULT_LOCAL_HOUSEHOLD_ID outbox
-  await localDb.outbox
-    .where('household_id')
-    .equals(DEFAULT_LOCAL_HOUSEHOLD_ID)
-    .delete();
+  // Clear migrated DEFAULT_LOCAL_HOUSEHOLD_ID records so they never duplicate
+  await localDb.transaction(
+    'rw',
+    [localDb.outbox, localDb.transactions, localDb.accounts, localDb.categories],
+    async () => {
+      await localDb.outbox.where('household_id').equals(DEFAULT_LOCAL_HOUSEHOLD_ID).delete();
+      await localDb.transactions.where('household_id').equals(DEFAULT_LOCAL_HOUSEHOLD_ID).delete();
+      await localDb.accounts.where('household_id').equals(DEFAULT_LOCAL_HOUSEHOLD_ID).delete();
+      await localDb.categories.where('household_id').equals(DEFAULT_LOCAL_HOUSEHOLD_ID).delete();
+    }
+  );
 
   return { uploadedTransactions: items.length };
 }

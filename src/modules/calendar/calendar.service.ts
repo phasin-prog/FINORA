@@ -1,5 +1,6 @@
 import Decimal from 'decimal.js';
 import { z } from 'zod';
+import { getClientAuthHeaders } from '@/lib/supabase/client';
 import { toDecimal, toNumericString } from '@/lib/utilities/money';
 import { localDb } from '@/offline/indexeddb/db';
 import {
@@ -64,7 +65,17 @@ export async function createCalendarEvent(
     updated_at: now,
   };
 
-  return saveCalendarEvent(record);
+  const saved = await saveCalendarEvent(record);
+  if (typeof window !== 'undefined' && navigator.onLine) {
+    void getClientAuthHeaders().then((authHeaders) =>
+      fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'calendar_event', data: saved }),
+      })
+    ).catch(() => {});
+  }
+  return saved;
 }
 
 export async function rescheduleCalendarEvent(

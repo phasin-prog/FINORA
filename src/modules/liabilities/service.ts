@@ -1,5 +1,6 @@
 import Decimal from 'decimal.js';
 import { z } from 'zod';
+import { getClientAuthHeaders } from '@/lib/supabase/client';
 import { toDecimal, toNumericString } from '@/lib/utilities/money';
 import { localDb } from '@/offline/indexeddb/db';
 import { createLocalTransaction } from '@/modules/transactions/service';
@@ -90,6 +91,17 @@ export async function createLiability(
   };
 
   await localDb.liabilities.add(liability);
+
+  if (typeof window !== 'undefined' && navigator.onLine) {
+    void getClientAuthHeaders().then((authHeaders) =>
+      fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'liability', data: liability }),
+      })
+    ).catch(() => {});
+  }
+
   return liability;
 }
 
@@ -228,6 +240,21 @@ export async function recordDebtPayment(
       await localDb.debt_payments.add(payment);
     }
   );
+
+  if (typeof window !== 'undefined' && navigator.onLine) {
+    void getClientAuthHeaders().then(async (authHeaders) => {
+      await fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'liability', data: updatedLiability }),
+      });
+      await fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'debt_payment', data: payment }),
+      });
+    }).catch(() => {});
+  }
 
   return { liability: updatedLiability, payment };
 }

@@ -13,6 +13,7 @@ import type {
   Liability,
   Transaction,
 } from '@/types/financial';
+import type { CalendarEventRecord } from '@/modules/calendar/calendar.types';
 
 export const ACTIVE_HOUSEHOLD_KEY = 'finora_active_household_id';
 export const ACTIVE_USER_KEY = 'finora_active_user_id';
@@ -103,6 +104,7 @@ export async function pullCloudHouseholdState(): Promise<CloudBootstrapResult> {
     journalLines: JournalLine[];
     budgets: Budget[];
     liabilities: Liability[];
+    calendarEvents?: CalendarEventRecord[];
   };
 
   if (!payload.authenticated) {
@@ -148,6 +150,7 @@ export async function pullCloudHouseholdState(): Promise<CloudBootstrapResult> {
       localDb.journal_lines,
       localDb.budgets,
       localDb.liabilities,
+      localDb.calendar_events,
     ],
     async () => {
       // Preserve any local unsynced transactions for this household
@@ -183,6 +186,9 @@ export async function pullCloudHouseholdState(): Promise<CloudBootstrapResult> {
       }
       if (payload.liabilities.length > 0) {
         await localDb.liabilities.bulkPut(payload.liabilities);
+      }
+      if (payload.calendarEvents && payload.calendarEvents.length > 0) {
+        await localDb.calendar_events.bulkPut(payload.calendarEvents);
       }
     }
   );
