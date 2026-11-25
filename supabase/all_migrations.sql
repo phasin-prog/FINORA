@@ -146,9 +146,16 @@ CREATE TABLE IF NOT EXISTS public.journal_entries (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-ALTER TABLE public.transactions
-  ADD CONSTRAINT fk_transactions_journal_entry
-  FOREIGN KEY (journal_entry_id) REFERENCES public.journal_entries(id) ON DELETE RESTRICT;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_transactions_journal_entry'
+  ) THEN
+    ALTER TABLE public.transactions
+      ADD CONSTRAINT fk_transactions_journal_entry
+      FOREIGN KEY (journal_entry_id) REFERENCES public.journal_entries(id) ON DELETE RESTRICT;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.journal_lines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -506,33 +513,42 @@ ALTER TABLE public.sync_devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sync_operations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles & Preferences: owner only
+DROP POLICY IF EXISTS "profiles_self" ON public.profiles;
 CREATE POLICY "profiles_self" ON public.profiles
   FOR ALL USING (id = auth.uid()) WITH CHECK (id = auth.uid());
 
+DROP POLICY IF EXISTS "preferences_self" ON public.user_preferences;
 CREATE POLICY "preferences_self" ON public.user_preferences
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "sync_devices_self" ON public.sync_devices;
 CREATE POLICY "sync_devices_self" ON public.sync_devices
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 -- Households & Members
+DROP POLICY IF EXISTS "households_member_select" ON public.households;
 CREATE POLICY "households_member_select" ON public.households
   FOR SELECT USING (public.is_household_member(id));
 
+DROP POLICY IF EXISTS "households_owner_insert" ON public.households;
 CREATE POLICY "households_owner_insert" ON public.households
   FOR INSERT WITH CHECK (created_by = auth.uid());
 
+DROP POLICY IF EXISTS "households_member_update" ON public.households;
 CREATE POLICY "households_member_update" ON public.households
   FOR UPDATE USING (public.is_household_member(id));
 
+DROP POLICY IF EXISTS "household_members_select" ON public.household_members;
 CREATE POLICY "household_members_select" ON public.household_members
   FOR SELECT USING (public.is_household_member(household_id));
 
 -- Household-scoped financial tables
+DROP POLICY IF EXISTS "ledger_accounts_household" ON public.ledger_accounts;
 CREATE POLICY "ledger_accounts_household" ON public.ledger_accounts
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "accounts_household_privacy" ON public.accounts;
 CREATE POLICY "accounts_household_privacy" ON public.accounts
   FOR ALL USING (
     public.is_household_member(household_id)
@@ -543,14 +559,17 @@ CREATE POLICY "accounts_household_privacy" ON public.accounts
     AND (is_private = FALSE OR owner_user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "categories_household" ON public.categories;
 CREATE POLICY "categories_household" ON public.categories
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "transactions_household" ON public.transactions;
 CREATE POLICY "transactions_household" ON public.transactions
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "transaction_transfers_household" ON public.transaction_transfers;
 CREATE POLICY "transaction_transfers_household" ON public.transaction_transfers
   FOR ALL USING (
     EXISTS (
@@ -565,10 +584,12 @@ CREATE POLICY "transaction_transfers_household" ON public.transaction_transfers
     )
   );
 
+DROP POLICY IF EXISTS "journal_entries_household" ON public.journal_entries;
 CREATE POLICY "journal_entries_household" ON public.journal_entries
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "journal_lines_household" ON public.journal_lines;
 CREATE POLICY "journal_lines_household" ON public.journal_lines
   FOR ALL USING (
     EXISTS (
@@ -583,18 +604,22 @@ CREATE POLICY "journal_lines_household" ON public.journal_lines
     )
   );
 
+DROP POLICY IF EXISTS "budgets_household" ON public.budgets;
 CREATE POLICY "budgets_household" ON public.budgets
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "assets_household" ON public.assets;
 CREATE POLICY "assets_household" ON public.assets
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "liabilities_household" ON public.liabilities;
 CREATE POLICY "liabilities_household" ON public.liabilities
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "debt_payments_household" ON public.debt_payments;
 CREATE POLICY "debt_payments_household" ON public.debt_payments
   FOR ALL USING (
     EXISTS (
@@ -609,6 +634,7 @@ CREATE POLICY "debt_payments_household" ON public.debt_payments
     )
   );
 
+DROP POLICY IF EXISTS "debt_schedules_household" ON public.debt_schedules;
 CREATE POLICY "debt_schedules_household" ON public.debt_schedules
   FOR ALL USING (
     EXISTS (
@@ -623,6 +649,7 @@ CREATE POLICY "debt_schedules_household" ON public.debt_schedules
     )
   );
 
+DROP POLICY IF EXISTS "debt_rate_history_household" ON public.debt_rate_history;
 CREATE POLICY "debt_rate_history_household" ON public.debt_rate_history
   FOR ALL USING (
     EXISTS (
@@ -637,20 +664,25 @@ CREATE POLICY "debt_rate_history_household" ON public.debt_rate_history
     )
   );
 
+DROP POLICY IF EXISTS "recurring_rules_household" ON public.recurring_rules;
 CREATE POLICY "recurring_rules_household" ON public.recurring_rules
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "attachments_household" ON public.attachments;
 CREATE POLICY "attachments_household" ON public.attachments
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "audit_logs_household_select" ON public.audit_logs;
 CREATE POLICY "audit_logs_household_select" ON public.audit_logs
   FOR SELECT USING (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "audit_logs_household_insert" ON public.audit_logs;
 CREATE POLICY "audit_logs_household_insert" ON public.audit_logs
   FOR INSERT WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "sync_operations_household" ON public.sync_operations;
 CREATE POLICY "sync_operations_household" ON public.sync_operations
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
@@ -1144,17 +1176,21 @@ ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "calendar_events_household" ON public.calendar_events;
 CREATE POLICY "calendar_events_household" ON public.calendar_events
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "notification_preferences_self" ON public.notification_preferences;
 CREATE POLICY "notification_preferences_self" ON public.notification_preferences
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "notifications_self" ON public.notifications;
 CREATE POLICY "notifications_self" ON public.notifications
   FOR ALL USING (user_id = auth.uid() AND public.is_household_member(household_id))
   WITH CHECK (user_id = auth.uid() AND public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "push_subscriptions_self" ON public.push_subscriptions;
 CREATE POLICY "push_subscriptions_self" ON public.push_subscriptions
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 -- FINORA v1.2 â€” Account Number & Icon Metadata

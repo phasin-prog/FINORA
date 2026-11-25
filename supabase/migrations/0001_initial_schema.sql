@@ -146,9 +146,16 @@ CREATE TABLE IF NOT EXISTS public.journal_entries (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-ALTER TABLE public.transactions
-  ADD CONSTRAINT fk_transactions_journal_entry
-  FOREIGN KEY (journal_entry_id) REFERENCES public.journal_entries(id) ON DELETE RESTRICT;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_transactions_journal_entry'
+  ) THEN
+    ALTER TABLE public.transactions
+      ADD CONSTRAINT fk_transactions_journal_entry
+      FOREIGN KEY (journal_entry_id) REFERENCES public.journal_entries(id) ON DELETE RESTRICT;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.journal_lines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

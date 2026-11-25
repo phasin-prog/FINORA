@@ -1,4 +1,4 @@
--- FINORA — Accounting Integrity Triggers, RLS Policies & Onboarding Provisioning
+﻿-- FINORA â€” Accounting Integrity Triggers, RLS Policies & Onboarding Provisioning
 -- PostgreSQL / Supabase Migration 0002
 
 -- ============================================================================
@@ -157,33 +157,42 @@ ALTER TABLE public.sync_devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sync_operations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles & Preferences: owner only
+DROP POLICY IF EXISTS "profiles_self" ON public.profiles;
 CREATE POLICY "profiles_self" ON public.profiles
   FOR ALL USING (id = auth.uid()) WITH CHECK (id = auth.uid());
 
+DROP POLICY IF EXISTS "preferences_self" ON public.user_preferences;
 CREATE POLICY "preferences_self" ON public.user_preferences
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "sync_devices_self" ON public.sync_devices;
 CREATE POLICY "sync_devices_self" ON public.sync_devices
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 -- Households & Members
+DROP POLICY IF EXISTS "households_member_select" ON public.households;
 CREATE POLICY "households_member_select" ON public.households
   FOR SELECT USING (public.is_household_member(id));
 
+DROP POLICY IF EXISTS "households_owner_insert" ON public.households;
 CREATE POLICY "households_owner_insert" ON public.households
   FOR INSERT WITH CHECK (created_by = auth.uid());
 
+DROP POLICY IF EXISTS "households_member_update" ON public.households;
 CREATE POLICY "households_member_update" ON public.households
   FOR UPDATE USING (public.is_household_member(id));
 
+DROP POLICY IF EXISTS "household_members_select" ON public.household_members;
 CREATE POLICY "household_members_select" ON public.household_members
   FOR SELECT USING (public.is_household_member(household_id));
 
 -- Household-scoped financial tables
+DROP POLICY IF EXISTS "ledger_accounts_household" ON public.ledger_accounts;
 CREATE POLICY "ledger_accounts_household" ON public.ledger_accounts
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "accounts_household_privacy" ON public.accounts;
 CREATE POLICY "accounts_household_privacy" ON public.accounts
   FOR ALL USING (
     public.is_household_member(household_id)
@@ -194,14 +203,17 @@ CREATE POLICY "accounts_household_privacy" ON public.accounts
     AND (is_private = FALSE OR owner_user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "categories_household" ON public.categories;
 CREATE POLICY "categories_household" ON public.categories
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "transactions_household" ON public.transactions;
 CREATE POLICY "transactions_household" ON public.transactions
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "transaction_transfers_household" ON public.transaction_transfers;
 CREATE POLICY "transaction_transfers_household" ON public.transaction_transfers
   FOR ALL USING (
     EXISTS (
@@ -216,10 +228,12 @@ CREATE POLICY "transaction_transfers_household" ON public.transaction_transfers
     )
   );
 
+DROP POLICY IF EXISTS "journal_entries_household" ON public.journal_entries;
 CREATE POLICY "journal_entries_household" ON public.journal_entries
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "journal_lines_household" ON public.journal_lines;
 CREATE POLICY "journal_lines_household" ON public.journal_lines
   FOR ALL USING (
     EXISTS (
@@ -234,18 +248,22 @@ CREATE POLICY "journal_lines_household" ON public.journal_lines
     )
   );
 
+DROP POLICY IF EXISTS "budgets_household" ON public.budgets;
 CREATE POLICY "budgets_household" ON public.budgets
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "assets_household" ON public.assets;
 CREATE POLICY "assets_household" ON public.assets
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "liabilities_household" ON public.liabilities;
 CREATE POLICY "liabilities_household" ON public.liabilities
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "debt_payments_household" ON public.debt_payments;
 CREATE POLICY "debt_payments_household" ON public.debt_payments
   FOR ALL USING (
     EXISTS (
@@ -260,6 +278,7 @@ CREATE POLICY "debt_payments_household" ON public.debt_payments
     )
   );
 
+DROP POLICY IF EXISTS "debt_schedules_household" ON public.debt_schedules;
 CREATE POLICY "debt_schedules_household" ON public.debt_schedules
   FOR ALL USING (
     EXISTS (
@@ -274,6 +293,7 @@ CREATE POLICY "debt_schedules_household" ON public.debt_schedules
     )
   );
 
+DROP POLICY IF EXISTS "debt_rate_history_household" ON public.debt_rate_history;
 CREATE POLICY "debt_rate_history_household" ON public.debt_rate_history
   FOR ALL USING (
     EXISTS (
@@ -288,20 +308,25 @@ CREATE POLICY "debt_rate_history_household" ON public.debt_rate_history
     )
   );
 
+DROP POLICY IF EXISTS "recurring_rules_household" ON public.recurring_rules;
 CREATE POLICY "recurring_rules_household" ON public.recurring_rules
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "attachments_household" ON public.attachments;
 CREATE POLICY "attachments_household" ON public.attachments
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "audit_logs_household_select" ON public.audit_logs;
 CREATE POLICY "audit_logs_household_select" ON public.audit_logs
   FOR SELECT USING (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "audit_logs_household_insert" ON public.audit_logs;
 CREATE POLICY "audit_logs_household_insert" ON public.audit_logs
   FOR INSERT WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "sync_operations_household" ON public.sync_operations;
 CREATE POLICY "sync_operations_household" ON public.sync_operations
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
@@ -389,22 +414,22 @@ BEGIN
   -- Default starter accounts
   INSERT INTO public.accounts (household_id, ledger_account_id, name, account_type, currency_code, opening_balance, owner_user_id)
   VALUES
-    (v_household_id, v_la_cash, 'เงินสด (Cash)', 'cash', 'THB', 0, p_user_id),
-    (v_household_id, v_la_bank, 'บัญชีธนาคารหลัก (Main Bank)', 'bank', 'THB', 0, p_user_id);
+    (v_household_id, v_la_cash, 'à¹€à¸‡à¸´à¸™à¸ªà¸” (Cash)', 'cash', 'THB', 0, p_user_id),
+    (v_household_id, v_la_bank, 'à¸šà¸±à¸à¸Šà¸µà¸˜à¸™à¸²à¸„à¸²à¸£à¸«à¸¥à¸±à¸ (Main Bank)', 'bank', 'THB', 0, p_user_id);
 
   -- Default categories
   INSERT INTO public.categories (household_id, ledger_account_id, name, category_type, icon, color, sort_order, is_system)
   VALUES
-    (v_household_id, v_la_salary, 'เงินเดือน (Salary)', 'INCOME', 'banknote', '#39846C', 1, TRUE),
-    (v_household_id, v_la_freelance, 'ฟรีแลนซ์ (Freelance)', 'INCOME', 'briefcase', '#39846C', 2, TRUE),
-    (v_household_id, v_la_dividend, 'เงินปันผล (Dividends)', 'INCOME', 'trending-up', '#39846C', 3, TRUE),
-    (v_household_id, v_la_food, 'อาหารและเครื่องดื่ม (Food)', 'EXPENSE', 'utensils', '#202B27', 10, TRUE),
-    (v_household_id, v_la_transport, 'การเดินทาง (Transport)', 'EXPENSE', 'car', '#202B27', 20, TRUE),
-    (v_household_id, v_la_housing, 'ที่อยู่อาศัย (Housing)', 'EXPENSE', 'home', '#202B27', 30, TRUE),
-    (v_household_id, v_la_personal, 'ส่วนตัว (Personal)', 'EXPENSE', 'user', '#202B27', 40, TRUE),
-    (v_household_id, v_la_interest, 'ดอกเบี้ยและค่าธรรมเนียม', 'EXPENSE', 'percent', '#C28B48', 50, TRUE),
-    (v_household_id, v_la_misc, 'อื่นๆ (Miscellaneous)', 'EXPENSE', 'more-horizontal', '#858B85', 90, TRUE),
-    (v_household_id, NULL, 'โอนเงินระหว่างบัญชี (Transfer)', 'TRANSFER', 'repeat', '#858B85', 100, TRUE);
+    (v_household_id, v_la_salary, 'à¹€à¸‡à¸´à¸™à¹€à¸”à¸·à¸­à¸™ (Salary)', 'INCOME', 'banknote', '#39846C', 1, TRUE),
+    (v_household_id, v_la_freelance, 'à¸Ÿà¸£à¸µà¹à¸¥à¸™à¸‹à¹Œ (Freelance)', 'INCOME', 'briefcase', '#39846C', 2, TRUE),
+    (v_household_id, v_la_dividend, 'à¹€à¸‡à¸´à¸™à¸›à¸±à¸™à¸œà¸¥ (Dividends)', 'INCOME', 'trending-up', '#39846C', 3, TRUE),
+    (v_household_id, v_la_food, 'à¸­à¸²à¸«à¸²à¸£à¹à¸¥à¸°à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸”à¸·à¹ˆà¸¡ (Food)', 'EXPENSE', 'utensils', '#202B27', 10, TRUE),
+    (v_household_id, v_la_transport, 'à¸à¸²à¸£à¹€à¸”à¸´à¸™à¸—à¸²à¸‡ (Transport)', 'EXPENSE', 'car', '#202B27', 20, TRUE),
+    (v_household_id, v_la_housing, 'à¸—à¸µà¹ˆà¸­à¸¢à¸¹à¹ˆà¸­à¸²à¸¨à¸±à¸¢ (Housing)', 'EXPENSE', 'home', '#202B27', 30, TRUE),
+    (v_household_id, v_la_personal, 'à¸ªà¹ˆà¸§à¸™à¸•à¸±à¸§ (Personal)', 'EXPENSE', 'user', '#202B27', 40, TRUE),
+    (v_household_id, v_la_interest, 'à¸”à¸­à¸à¹€à¸šà¸µà¹‰à¸¢à¹à¸¥à¸°à¸„à¹ˆà¸²à¸˜à¸£à¸£à¸¡à¹€à¸™à¸µà¸¢à¸¡', 'EXPENSE', 'percent', '#C28B48', 50, TRUE),
+    (v_household_id, v_la_misc, 'à¸­à¸·à¹ˆà¸™à¹† (Miscellaneous)', 'EXPENSE', 'more-horizontal', '#858B85', 90, TRUE),
+    (v_household_id, NULL, 'à¹‚à¸­à¸™à¹€à¸‡à¸´à¸™à¸£à¸°à¸«à¸§à¹ˆà¸²à¸‡à¸šà¸±à¸à¸Šà¸µ (Transfer)', 'TRANSFER', 'repeat', '#858B85', 100, TRUE);
 
   RETURN v_household_id;
 END;

@@ -1,4 +1,4 @@
--- FINORA v1.1 Addendum — Notification Center & Monthly Financial Calendar
+﻿-- FINORA v1.1 Addendum â€” Notification Center & Monthly Financial Calendar
 -- PostgreSQL / Supabase Migration 0004
 
 -- 1. Calendar Events
@@ -80,16 +80,20 @@ ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "calendar_events_household" ON public.calendar_events;
 CREATE POLICY "calendar_events_household" ON public.calendar_events
   FOR ALL USING (public.is_household_member(household_id))
   WITH CHECK (public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "notification_preferences_self" ON public.notification_preferences;
 CREATE POLICY "notification_preferences_self" ON public.notification_preferences
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "notifications_self" ON public.notifications;
 CREATE POLICY "notifications_self" ON public.notifications
   FOR ALL USING (user_id = auth.uid() AND public.is_household_member(household_id))
   WITH CHECK (user_id = auth.uid() AND public.is_household_member(household_id));
 
+DROP POLICY IF EXISTS "push_subscriptions_self" ON public.push_subscriptions;
 CREATE POLICY "push_subscriptions_self" ON public.push_subscriptions
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
