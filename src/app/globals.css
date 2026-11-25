@@ -60,7 +60,7 @@ html,
 body {
   background-color: var(--finora-bg);
   color: var(--finora-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-inter), var(--font-ibm-plex-thai), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;

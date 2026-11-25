@@ -50,7 +50,7 @@ export default function RootLayout({
       lang="th"
       className={`${inter.variable} ${ibmPlexSansThai.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-primary">
+      <body className="min-h-full flex flex-col bg-background text-primary font-sans">
         {children}
       </body>
     </html>
