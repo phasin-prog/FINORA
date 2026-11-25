@@ -387,6 +387,7 @@ export async function reversePostedTransaction(
   const updatedOriginal: Transaction = {
     ...original,
     status: 'reversed',
+    sync_status: 'sync_pending',
     updated_at: now,
   };
 

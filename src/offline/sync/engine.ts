@@ -92,6 +92,18 @@ export async function syncOutbox(householdId: string): Promise<SyncSummary> {
           sync_status: 'synced',
           updated_at: now,
         });
+        if (
+          outboxItem.operation === 'reverse' &&
+          typeof outboxItem.payload.originalTransactionId === 'string'
+        ) {
+          await localDb.transactions.update(
+            outboxItem.payload.originalTransactionId,
+            {
+              sync_status: 'synced',
+              updated_at: now,
+            }
+          );
+        }
       });
     } else if (res.status === 'conflict') {
       conflictCount += 1;

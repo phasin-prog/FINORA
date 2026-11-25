@@ -1,4 +1,4 @@
-﻿-- FINORA â€” Accounting Integrity Triggers, RLS Policies & Onboarding Provisioning
+-- FINORA â€” Accounting Integrity Triggers, RLS Policies & Onboarding Provisioning
 -- PostgreSQL / Supabase Migration 0002
 
 -- ============================================================================
@@ -414,23 +414,22 @@ BEGIN
   -- Default starter accounts
   INSERT INTO public.accounts (household_id, ledger_account_id, name, account_type, currency_code, opening_balance, owner_user_id)
   VALUES
-    (v_household_id, v_la_cash, 'à¹€à¸‡à¸´à¸™à¸ªà¸” (Cash)', 'cash', 'THB', 0, p_user_id),
-    (v_household_id, v_la_bank, 'à¸šà¸±à¸à¸Šà¸µà¸˜à¸™à¸²à¸„à¸²à¸£à¸«à¸¥à¸±à¸ (Main Bank)', 'bank', 'THB', 0, p_user_id);
+    (v_household_id, v_la_cash, 'เงินสด (Cash)', 'cash', 'THB', 0, p_user_id),
+    (v_household_id, v_la_bank, 'บัญชีธนาคารหลัก (Main Bank)', 'bank', 'THB', 0, p_user_id);
 
   -- Default categories
   INSERT INTO public.categories (household_id, ledger_account_id, name, category_type, icon, color, sort_order, is_system)
   VALUES
-    (v_household_id, v_la_salary, 'à¹€à¸‡à¸´à¸™à¹€à¸”à¸·à¸­à¸™ (Salary)', 'INCOME', 'banknote', '#39846C', 1, TRUE),
-    (v_household_id, v_la_freelance, 'à¸Ÿà¸£à¸µà¹à¸¥à¸™à¸‹à¹Œ (Freelance)', 'INCOME', 'briefcase', '#39846C', 2, TRUE),
-    (v_household_id, v_la_dividend, 'à¹€à¸‡à¸´à¸™à¸›à¸±à¸™à¸œà¸¥ (Dividends)', 'INCOME', 'trending-up', '#39846C', 3, TRUE),
-    (v_household_id, v_la_food, 'à¸­à¸²à¸«à¸²à¸£à¹à¸¥à¸°à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸”à¸·à¹ˆà¸¡ (Food)', 'EXPENSE', 'utensils', '#202B27', 10, TRUE),
-    (v_household_id, v_la_transport, 'à¸à¸²à¸£à¹€à¸”à¸´à¸™à¸—à¸²à¸‡ (Transport)', 'EXPENSE', 'car', '#202B27', 20, TRUE),
-    (v_household_id, v_la_housing, 'à¸—à¸µà¹ˆà¸­à¸¢à¸¹à¹ˆà¸­à¸²à¸¨à¸±à¸¢ (Housing)', 'EXPENSE', 'home', '#202B27', 30, TRUE),
-    (v_household_id, v_la_personal, 'à¸ªà¹ˆà¸§à¸™à¸•à¸±à¸§ (Personal)', 'EXPENSE', 'user', '#202B27', 40, TRUE),
-    (v_household_id, v_la_interest, 'à¸”à¸­à¸à¹€à¸šà¸µà¹‰à¸¢à¹à¸¥à¸°à¸„à¹ˆà¸²à¸˜à¸£à¸£à¸¡à¹€à¸™à¸µà¸¢à¸¡', 'EXPENSE', 'percent', '#C28B48', 50, TRUE),
-    (v_household_id, v_la_misc, 'à¸­à¸·à¹ˆà¸™à¹† (Miscellaneous)', 'EXPENSE', 'more-horizontal', '#858B85', 90, TRUE),
-    (v_household_id, NULL, 'à¹‚à¸­à¸™à¹€à¸‡à¸´à¸™à¸£à¸°à¸«à¸§à¹ˆà¸²à¸‡à¸šà¸±à¸à¸Šà¸µ (Transfer)', 'TRANSFER', 'repeat', '#858B85', 100, TRUE);
-
+    (v_household_id, v_la_salary, 'เงินเดือน (Salary)', 'INCOME', 'banknote', '#39846C', 1, TRUE),
+    (v_household_id, v_la_freelance, 'ฟรีแลนซ์ (Freelance)', 'INCOME', 'briefcase', '#39846C', 2, TRUE),
+    (v_household_id, v_la_dividend, 'เงินปันผล (Dividends)', 'INCOME', 'trending-up', '#39846C', 3, TRUE),
+    (v_household_id, v_la_food, 'อาหารและเครื่องดื่ม (Food)', 'EXPENSE', 'utensils', '#202B27', 10, TRUE),
+    (v_household_id, v_la_transport, 'การเดินทาง (Transport)', 'EXPENSE', 'car', '#202B27', 20, TRUE),
+    (v_household_id, v_la_housing, 'ที่อยู่อาศัย (Housing)', 'EXPENSE', 'home', '#202B27', 30, TRUE),
+    (v_household_id, v_la_personal, 'ส่วนตัว (Personal)', 'EXPENSE', 'user', '#202B27', 40, TRUE),
+    (v_household_id, v_la_interest, 'ดอกเบี้ยและค่าธรรมเนียม', 'EXPENSE', 'percent', '#C28B48', 50, TRUE),
+    (v_household_id, v_la_misc, 'อื่นๆ (Miscellaneous)', 'EXPENSE', 'more-horizontal', '#858B85', 90, TRUE),
+    (v_household_id, NULL, 'โอนเงินระหว่างบัญชี (Transfer)', 'TRANSFER', 'repeat', '#858B85', 100, TRUE);
   RETURN v_household_id;
 END;
 $$;

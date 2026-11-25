@@ -1,4 +1,4 @@
-﻿-- FINORA â€” Initial Database Schema (v1.0)
+-- FINORA — Initial Database Schema (v1.0)
 -- PostgreSQL / Supabase Migration 0001
 -- Strict rules:
 --   - UUID Primary Keys everywhere
@@ -354,6 +354,8 @@ CREATE INDEX IF NOT EXISTS idx_journal_lines_ledger_account ON public.journal_li
 
 CREATE INDEX IF NOT EXISTS idx_budgets_household_period ON public.budgets(household_id, period_start, period_end);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_household_created ON public.audit_logs(household_id, created_at DESC);
+
+
 -- FINORA â€” Accounting Integrity Triggers, RLS Policies & Onboarding Provisioning
 -- PostgreSQL / Supabase Migration 0002
 
@@ -770,23 +772,22 @@ BEGIN
   -- Default starter accounts
   INSERT INTO public.accounts (household_id, ledger_account_id, name, account_type, currency_code, opening_balance, owner_user_id)
   VALUES
-    (v_household_id, v_la_cash, 'à¹€à¸‡à¸´à¸™à¸ªà¸” (Cash)', 'cash', 'THB', 0, p_user_id),
-    (v_household_id, v_la_bank, 'à¸šà¸±à¸à¸Šà¸µà¸˜à¸™à¸²à¸„à¸²à¸£à¸«à¸¥à¸±à¸ (Main Bank)', 'bank', 'THB', 0, p_user_id);
+    (v_household_id, v_la_cash, 'เงินสด (Cash)', 'cash', 'THB', 0, p_user_id),
+    (v_household_id, v_la_bank, 'บัญชีธนาคารหลัก (Main Bank)', 'bank', 'THB', 0, p_user_id);
 
   -- Default categories
   INSERT INTO public.categories (household_id, ledger_account_id, name, category_type, icon, color, sort_order, is_system)
   VALUES
-    (v_household_id, v_la_salary, 'à¹€à¸‡à¸´à¸™à¹€à¸”à¸·à¸­à¸™ (Salary)', 'INCOME', 'banknote', '#39846C', 1, TRUE),
-    (v_household_id, v_la_freelance, 'à¸Ÿà¸£à¸µà¹à¸¥à¸™à¸‹à¹Œ (Freelance)', 'INCOME', 'briefcase', '#39846C', 2, TRUE),
-    (v_household_id, v_la_dividend, 'à¹€à¸‡à¸´à¸™à¸›à¸±à¸™à¸œà¸¥ (Dividends)', 'INCOME', 'trending-up', '#39846C', 3, TRUE),
-    (v_household_id, v_la_food, 'à¸­à¸²à¸«à¸²à¸£à¹à¸¥à¸°à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸”à¸·à¹ˆà¸¡ (Food)', 'EXPENSE', 'utensils', '#202B27', 10, TRUE),
-    (v_household_id, v_la_transport, 'à¸à¸²à¸£à¹€à¸”à¸´à¸™à¸—à¸²à¸‡ (Transport)', 'EXPENSE', 'car', '#202B27', 20, TRUE),
-    (v_household_id, v_la_housing, 'à¸—à¸µà¹ˆà¸­à¸¢à¸¹à¹ˆà¸­à¸²à¸¨à¸±à¸¢ (Housing)', 'EXPENSE', 'home', '#202B27', 30, TRUE),
-    (v_household_id, v_la_personal, 'à¸ªà¹ˆà¸§à¸™à¸•à¸±à¸§ (Personal)', 'EXPENSE', 'user', '#202B27', 40, TRUE),
-    (v_household_id, v_la_interest, 'à¸”à¸­à¸à¹€à¸šà¸µà¹‰à¸¢à¹à¸¥à¸°à¸„à¹ˆà¸²à¸˜à¸£à¸£à¸¡à¹€à¸™à¸µà¸¢à¸¡', 'EXPENSE', 'percent', '#C28B48', 50, TRUE),
-    (v_household_id, v_la_misc, 'à¸­à¸·à¹ˆà¸™à¹† (Miscellaneous)', 'EXPENSE', 'more-horizontal', '#858B85', 90, TRUE),
-    (v_household_id, NULL, 'à¹‚à¸­à¸™à¹€à¸‡à¸´à¸™à¸£à¸°à¸«à¸§à¹ˆà¸²à¸‡à¸šà¸±à¸à¸Šà¸µ (Transfer)', 'TRANSFER', 'repeat', '#858B85', 100, TRUE);
-
+    (v_household_id, v_la_salary, 'เงินเดือน (Salary)', 'INCOME', 'banknote', '#39846C', 1, TRUE),
+    (v_household_id, v_la_freelance, 'ฟรีแลนซ์ (Freelance)', 'INCOME', 'briefcase', '#39846C', 2, TRUE),
+    (v_household_id, v_la_dividend, 'เงินปันผล (Dividends)', 'INCOME', 'trending-up', '#39846C', 3, TRUE),
+    (v_household_id, v_la_food, 'อาหารและเครื่องดื่ม (Food)', 'EXPENSE', 'utensils', '#202B27', 10, TRUE),
+    (v_household_id, v_la_transport, 'การเดินทาง (Transport)', 'EXPENSE', 'car', '#202B27', 20, TRUE),
+    (v_household_id, v_la_housing, 'ที่อยู่อาศัย (Housing)', 'EXPENSE', 'home', '#202B27', 30, TRUE),
+    (v_household_id, v_la_personal, 'ส่วนตัว (Personal)', 'EXPENSE', 'user', '#202B27', 40, TRUE),
+    (v_household_id, v_la_interest, 'ดอกเบี้ยและค่าธรรมเนียม', 'EXPENSE', 'percent', '#C28B48', 50, TRUE),
+    (v_household_id, v_la_misc, 'อื่นๆ (Miscellaneous)', 'EXPENSE', 'more-horizontal', '#858B85', 90, TRUE),
+    (v_household_id, NULL, 'โอนเงินระหว่างบัญชี (Transfer)', 'TRANSFER', 'repeat', '#858B85', 100, TRUE);
   RETURN v_household_id;
 END;
 $$;
@@ -811,7 +812,9 @@ CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_new_user();
--- FINORA â€” Atomic Transaction Posting & Reversal RPCs
+
+
+-- FINORA — Atomic Transaction Posting & Reversal RPCs
 -- PostgreSQL / Supabase Migration 0003
 -- Guarantees:
 --   1. Idempotency via (household_id, idempotency_key)
@@ -1094,6 +1097,8 @@ BEGIN
   );
 END;
 $$;
+
+
 -- FINORA v1.1 Addendum â€” Notification Center & Monthly Financial Calendar
 -- PostgreSQL / Supabase Migration 0004
 
@@ -1193,9 +1198,27 @@ CREATE POLICY "notifications_self" ON public.notifications
 DROP POLICY IF EXISTS "push_subscriptions_self" ON public.push_subscriptions;
 CREATE POLICY "push_subscriptions_self" ON public.push_subscriptions
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
--- FINORA v1.2 â€” Account Number & Icon Metadata
+
+
+-- FINORA v1.2 — Account Number & Icon Metadata
 -- PostgreSQL / Supabase Migration 0005
 
 ALTER TABLE public.accounts
   ADD COLUMN IF NOT EXISTS account_number TEXT,
   ADD COLUMN IF NOT EXISTS icon TEXT;
+
+
+-- Repair any mojibake Thai names in existing Supabase rows
+UPDATE public.accounts SET name = 'เงินสด (Cash)' WHERE account_type = 'cash' AND name LIKE '%(Cash)%';
+UPDATE public.accounts SET name = 'บัญชีธนาคารหลัก (Main Bank)' WHERE account_type = 'bank' AND name LIKE '%(Main Bank)%';
+
+UPDATE public.categories SET name = 'เงินเดือน (Salary)' WHERE name LIKE '%(Salary)%';
+UPDATE public.categories SET name = 'ฟรีแลนซ์ (Freelance)' WHERE name LIKE '%(Freelance)%';
+UPDATE public.categories SET name = 'เงินปันผล (Dividends)' WHERE name LIKE '%(Dividends)%';
+UPDATE public.categories SET name = 'อาหารและเครื่องดื่ม (Food)' WHERE name LIKE '%(Food)%';
+UPDATE public.categories SET name = 'การเดินทาง (Transport)' WHERE name LIKE '%(Transport)%';
+UPDATE public.categories SET name = 'ที่อยู่อาศัย (Housing)' WHERE name LIKE '%(Housing)%';
+UPDATE public.categories SET name = 'ส่วนตัว (Personal)' WHERE name LIKE '%(Personal)%';
+UPDATE public.categories SET name = 'ดอกเบี้ยและค่าธรรมเนียม' WHERE icon = 'percent' AND is_system = TRUE;
+UPDATE public.categories SET name = 'อื่นๆ (Miscellaneous)' WHERE name LIKE '%(Miscellaneous)%';
+UPDATE public.categories SET name = 'โอนเงินระหว่างบัญชี (Transfer)' WHERE name LIKE '%(Transfer)%';
