@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getClientAuthHeaders } from '@/lib/supabase/client';
 import { localDb } from '@/offline/indexeddb/db';
 import type { Category } from '@/types/financial';
 
@@ -46,11 +47,13 @@ export async function createCategory(
   await localDb.categories.add(category);
 
   if (typeof window !== 'undefined' && navigator.onLine) {
-    void fetch('/api/sync/entities', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'category', data: category }),
-    }).catch(() => {});
+    void getClientAuthHeaders().then((authHeaders) =>
+      fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'category', data: category }),
+      })
+    ).catch(() => {});
   }
 
   return category;
@@ -71,11 +74,13 @@ export async function updateCategory(
   await localDb.categories.put(updated);
 
   if (typeof window !== 'undefined' && navigator.onLine) {
-    void fetch('/api/sync/entities', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'category', data: updated }),
-    }).catch(() => {});
+    void getClientAuthHeaders().then((authHeaders) =>
+      fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'category', data: updated }),
+      })
+    ).catch(() => {});
   }
 
   return updated;

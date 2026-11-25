@@ -1,4 +1,8 @@
 import { localDb } from '@/offline/indexeddb/db';
+import {
+  createSupabaseBrowserClient,
+  getClientAuthHeaders,
+} from '@/lib/supabase/client';
 import type {
   Budget,
   Category,
@@ -18,6 +22,7 @@ export interface CloudBootstrapResult {
   userId?: string;
   householdId?: string;
   email?: string | null;
+  error?: string;
 }
 
 export async function pullCloudHouseholdState(): Promise<CloudBootstrapResult> {
@@ -39,8 +44,27 @@ export async function pullCloudHouseholdState(): Promise<CloudBootstrapResult> {
     return { authenticated: false };
   }
 
-  const res = await fetch('/api/sync/bootstrap', { cache: 'no-store' });
-  if (res.status === 401) {
+  let clientUser: { id: string; email?: string | null } | null = null;
+  try {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user) {
+      clientUser = {
+        id: data.session.user.id,
+        email: data.session.user.email ?? null,
+      };
+    }
+  } catch {
+    // Ignore if env not configured
+  }
+
+  const authHeaders = await getClientAuthHeaders();
+  const res = await fetch('/api/sync/bootstrap', {
+    cache: 'no-store',
+    headers: authHeaders,
+  });
+
+  if (res.status === 401 && !clientUser) {
     localStorage.removeItem(ACTIVE_HOUSEHOLD_KEY);
     localStorage.removeItem(ACTIVE_USER_KEY);
     localStorage.removeItem(ACTIVE_EMAIL_KEY);
@@ -48,7 +72,22 @@ export async function pullCloudHouseholdState(): Promise<CloudBootstrapResult> {
   }
 
   if (!res.ok) {
-    throw new Error(`Cloud sync bootstrap failed (${res.status})`);
+    let errText = `Cloud sync bootstrap failed (${res.status})`;
+    try {
+      const errJson = (await res.json()) as { error?: string };
+      if (errJson?.error) errText = errJson.error;
+    } catch {
+      // ignore
+    }
+    if (clientUser) {
+      return {
+        authenticated: true,
+        userId: clientUser.id,
+        email: clientUser.email ?? null,
+        error: errText,
+      };
+    }
+    throw new Error(errText);
   }
 
   const payload = (await res.json()) as {

@@ -10,7 +10,6 @@ import {
   CreditCard,
   Download,
   HardDriveDownload,
-  LogIn,
   RefreshCw,
   Tag,
   Target,
@@ -47,6 +46,7 @@ export default function SettingsPage() {
     userId,
     isAuthenticated,
     authEmail,
+    cloudError,
     accounts,
     transactions,
     pendingSyncCount,
@@ -187,8 +187,11 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <p className="text-xs text-muted mt-0.5 truncate">
-                  สถานะ: เข้าสู่ระบบแล้ว · Sync เปิดใช้งาน
+                  สถานะ: เข้าสู่ระบบแล้ว · {cloudError ? 'ซิงค์ Cloud มีปัญหา' : 'Sync เปิดใช้งาน'}
                 </p>
+                {cloudError && (
+                  <p className="text-[11px] text-danger mt-1">{cloudError}</p>
+                )}
               </div>
               <button
                 type="button"
@@ -405,37 +408,6 @@ export default function SettingsPage() {
           )}
           {backupError && (
             <p className="text-xs text-danger">{backupError}</p>
-          )}
-
-          {isAuthenticated ? (
-            <div className="p-3 rounded-[10px] bg-accent/10 border border-accent/30 flex items-center justify-between gap-2 text-xs">
-              <div>
-                <p className="font-semibold text-accent">เชื่อมต่อ Cloud แล้ว</p>
-                <p className="text-primary mt-0.5">{authEmail || 'Supabase Account'}</p>
-              </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  const supabase = createSupabaseBrowserClient();
-                  await supabase.auth.signOut();
-                  localStorage.removeItem(ACTIVE_HOUSEHOLD_KEY);
-                  localStorage.removeItem(ACTIVE_USER_KEY);
-                  localStorage.removeItem(ACTIVE_EMAIL_KEY);
-                  await refresh(true);
-                }}
-                className="px-3 py-1.5 rounded-[8px] border border-border bg-surface text-primary font-medium hover:text-danger"
-              >
-                ออกจากระบบ
-              </button>
-            </div>
-          ) : (
-            <Link
-              href="/login"
-              className="w-full py-2.5 px-4 rounded-[10px] bg-primary text-primary-foreground text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90"
-            >
-              <LogIn className="w-4 h-4" />
-              เข้าสู่ระบบ / เชื่อมต่อ Cloud (Supabase)
-            </Link>
           )}
         </section>
 

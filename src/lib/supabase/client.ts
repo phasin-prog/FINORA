@@ -12,3 +12,17 @@ export function createSupabaseBrowserClient() {
 
   return createBrowserClient(url, anonKey);
 }
+
+export async function getClientAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch {
+    // Ignore when env vars are missing in local-only mode
+  }
+  return {};
+}

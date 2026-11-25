@@ -27,6 +27,7 @@ export interface FinoraStoreState {
   userId: string;
   isAuthenticated: boolean;
   authEmail: string | null;
+  cloudError: string | null;
   accounts: AccountWithBalance[];
   categories: Category[];
   transactions: Transaction[];
@@ -44,6 +45,7 @@ export function useFinoraStore(): FinoraStoreState {
   const [userId, setUserId] = useState(DEFAULT_LOCAL_USER_ID);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [cloudError, setCloudError] = useState<string | null>(null);
 
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -66,13 +68,18 @@ export function useFinoraStore(): FinoraStoreState {
       hasBootstrappedRef.current = true;
       try {
         const cloud = await pullCloudHouseholdState();
-        if (cloud.authenticated && cloud.householdId && cloud.userId) {
-          activeHousehold = cloud.householdId;
-          activeUser = cloud.userId;
-          setHouseholdId(cloud.householdId);
-          setUserId(cloud.userId);
+        if (cloud.authenticated) {
           setIsAuthenticated(true);
           setAuthEmail(cloud.email ?? null);
+          setCloudError(cloud.error ?? null);
+          if (cloud.householdId && cloud.userId) {
+            activeHousehold = cloud.householdId;
+            activeUser = cloud.userId;
+            setHouseholdId(cloud.householdId);
+            setUserId(cloud.userId);
+          } else {
+            await ensureLocalHouseholdInitialized();
+          }
         } else {
           activeHousehold = DEFAULT_LOCAL_HOUSEHOLD_ID;
           activeUser = DEFAULT_LOCAL_USER_ID;
@@ -80,9 +87,11 @@ export function useFinoraStore(): FinoraStoreState {
           setUserId(DEFAULT_LOCAL_USER_ID);
           setIsAuthenticated(false);
           setAuthEmail(null);
+          setCloudError(null);
           await ensureLocalHouseholdInitialized();
         }
-      } catch {
+      } catch (err) {
+        setCloudError(err instanceof Error ? err.message : 'Cloud sync error');
         await ensureLocalHouseholdInitialized();
       }
     }
@@ -151,6 +160,7 @@ export function useFinoraStore(): FinoraStoreState {
     userId,
     isAuthenticated,
     authEmail,
+    cloudError,
     accounts,
     categories,
     transactions,

@@ -1,4 +1,5 @@
 import { localDb } from '@/offline/indexeddb/db';
+import { getClientAuthHeaders } from '@/lib/supabase/client';
 
 export interface SyncSummary {
   syncedCount: number;
@@ -32,9 +33,10 @@ export async function syncOutbox(householdId: string): Promise<SyncSummary> {
     return { syncedCount: 0, conflictCount: 0, failedCount: 0, offline: false };
   }
 
+  const authHeaders = await getClientAuthHeaders();
   const response = await fetch('/api/transactions/sync', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify({
       items: pendingItems.map((item) => ({
         outboxId: item.id,

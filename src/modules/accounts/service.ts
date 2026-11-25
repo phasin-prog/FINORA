@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getClientAuthHeaders } from '@/lib/supabase/client';
 import { toNumericString } from '@/lib/utilities/money';
 import { localDb } from '@/offline/indexeddb/db';
 import type { AccountClass, AccountType, FinancialAccount } from '@/types/financial';
@@ -59,11 +60,13 @@ export async function createFinancialAccount(
   await localDb.accounts.add(account);
 
   if (typeof window !== 'undefined' && navigator.onLine) {
-    void fetch('/api/sync/entities', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'account', data: account }),
-    }).catch(() => {});
+    void getClientAuthHeaders().then((authHeaders) =>
+      fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'account', data: account }),
+      })
+    ).catch(() => {});
   }
 
   return account;
@@ -100,11 +103,13 @@ export async function updateFinancialAccount(
   await localDb.accounts.put(updated);
 
   if (typeof window !== 'undefined' && navigator.onLine) {
-    void fetch('/api/sync/entities', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'account', data: updated }),
-    }).catch(() => {});
+    void getClientAuthHeaders().then((authHeaders) =>
+      fetch('/api/sync/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ kind: 'account', data: updated }),
+      })
+    ).catch(() => {});
   }
 
   return updated;

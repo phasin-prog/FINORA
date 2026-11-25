@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getAuthenticatedSupabase } from '@/lib/supabase/server';
 import { createTransactionSchema } from '@/lib/validation/transaction';
 
 const reverseOperationSchema = z.object({
@@ -32,11 +32,8 @@ const syncBatchSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { supabase, user, error: authError } =
+      await getAuthenticatedSupabase(request);
 
     if (authError || !user) {
       return NextResponse.json(
