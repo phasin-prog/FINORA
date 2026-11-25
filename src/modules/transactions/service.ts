@@ -1,4 +1,5 @@
 import Decimal from 'decimal.js';
+import { getClientAuthHeaders } from '@/lib/supabase/client';
 import {
   createTransactionSchema,
   type CreateTransactionInput,
@@ -572,6 +573,71 @@ export async function deleteOrReverseTransaction(
   }
 
   throw new TransactionError('รายการนี้ถูกกลับรายการไปแล้ว');
+}
+
+/**
+ * Permanently deletes a transaction and its associated journal entries/lines
+ * from both local cache and Supabase Cloud (FINORA v1.3).
+ */
+export async function permanentlyDeleteTransaction(txId: string): Promise<void> {
+  const existing = await localDb.transactions.get(txId);
+  if (!existing) {
+    throw new TransactionError('ไม่พบรายการธุรกรรม');
+  }
+
+  if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new TransactionError('ต้องเชื่อมต่ออินเทอร์เน็ตเพื่อลบรายการ');
+  }
+
+  if (typeof window !== 'undefined') {
+    const authHeaders = await getClientAuthHeaders();
+    if (authHeaders.Authorization) {
+      const res = await fetch(`/api/transactions/${txId}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+      if (!res.ok) {
+        let msg = 'ไม่สามารถลบรายการบน Cloud ได้';
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch {
+          // ignore
+        }
+        throw new TransactionError(msg);
+      }
+    }
+  }
+
+  // Delete locally (including any reversal children & their journal entries/lines)
+  const relatedTxs = await localDb.transactions
+    .filter((t) => t.id === txId || t.reversed_transaction_id === txId)
+    .toArray();
+
+  const relatedIds = relatedTxs.map((t) => t.id);
+  const journalIds = relatedTxs
+    .map((t) => t.journal_entry_id)
+    .filter((id): id is string => Boolean(id));
+
+  await localDb.transaction(
+    'rw',
+    [
+      localDb.transactions,
+      localDb.journal_entries,
+      localDb.journal_lines,
+      localDb.outbox,
+    ],
+    async () => {
+      await localDb.transactions.bulkDelete(relatedIds);
+      for (const jid of journalIds) {
+        await localDb.journal_lines.where('journal_entry_id').equals(jid).delete();
+        await localDb.journal_entries.delete(jid);
+      }
+      for (const rid of relatedIds) {
+        await localDb.outbox.where('entity_id').equals(rid).delete();
+      }
+    }
+  );
 }
 
 /**

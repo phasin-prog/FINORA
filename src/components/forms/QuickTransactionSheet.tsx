@@ -16,7 +16,7 @@ export function QuickTransactionSheet() {
     userId,
     accounts,
     categories,
-    refresh,
+    triggerSync,
   } = useFinora();
 
   const [txType, setTxType] = useState<TransactionType>('expense');
@@ -83,7 +83,7 @@ export function QuickTransactionSheet() {
         userId
       );
 
-      await refresh();
+      await triggerSync();
       setAmount('');
       setDescription('');
       setNotes('');
@@ -209,7 +209,7 @@ export function QuickTransactionSheet() {
                         icon: 'tag',
                         color: txType === 'income' ? '#39846C' : '#202B27',
                       });
-                      await refresh();
+                      await triggerSync();
                       setCategoryId(created.id);
                       setNewCatName('');
                       setShowNewCat(false);

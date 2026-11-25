@@ -39,7 +39,6 @@ import {
   ACTIVE_HOUSEHOLD_KEY,
   ACTIVE_USER_KEY,
 } from '@/offline/sync/pull';
-import { pushLocalDataToCloudHousehold } from '@/offline/sync/migrate-local';
 
 export default function SettingsPage() {
   const {
@@ -49,7 +48,6 @@ export default function SettingsPage() {
     authEmail,
     cloudError,
     accounts,
-    categories,
     transactions,
     pendingSyncCount,
     triggerSync,
@@ -227,29 +225,6 @@ export default function SettingsPage() {
                 เข้าสู่ระบบ
               </Link>
             </div>
-          )}
-          {isAuthenticated && !cloudError && (
-            <button
-              type="button"
-              onClick={async () => {
-                setBackupError(null);
-                setBackupMessage(null);
-                const res = await pushLocalDataToCloudHousehold({
-                  cloudHouseholdId: householdId,
-                  cloudAccounts: accounts,
-                  cloudCategories: categories,
-                });
-                await refresh(true);
-                setBackupMessage(
-                  res.uploadedTransactions > 0
-                    ? `ส่งข้อมูลจากเครื่องนี้ขึ้น Cloud แล้ว ${res.uploadedTransactions} รายการ`
-                    : 'ข้อมูลในเครื่องนี้ตรงกับ Cloud แล้ว'
-                );
-              }}
-              className="mt-3 w-full py-2 px-3 rounded-[10px] border border-accent/40 bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20"
-            >
-              ใช้ข้อมูลเครื่องนี้เป็นหลัก (ส่งข้อมูลเดิมขึ้น Cloud)
-            </button>
           )}
         </section>
 

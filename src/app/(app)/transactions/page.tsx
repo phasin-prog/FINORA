@@ -10,7 +10,7 @@ import { formatTHB, toDecimal } from '@/lib/utilities/money';
 import { toBangkokDateString } from '@/modules/calendar/calendar.utils';
 import {
   cancelDraftTransaction,
-  deleteOrReverseTransaction,
+  permanentlyDeleteTransaction,
   postDraftTransaction,
 } from '@/modules/transactions/service';
 import type { Transaction, TransactionType } from '@/types/financial';
@@ -171,7 +171,7 @@ export default function TransactionsPage() {
   async function handleDelete(txId: string) {
     setActionError(null);
     try {
-      await deleteOrReverseTransaction(txId, todayDate);
+      await permanentlyDeleteTransaction(txId);
       await refresh();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'ลบรายการไม่สำเร็จ');

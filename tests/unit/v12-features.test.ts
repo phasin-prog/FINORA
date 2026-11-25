@@ -15,6 +15,7 @@ import {
   computeAccountBalances,
   createLocalTransaction,
   deleteOrReverseTransaction,
+  permanentlyDeleteTransaction,
   updateOrCorrectTransaction,
 } from '@/modules/transactions/service';
 import {
@@ -234,5 +235,46 @@ describe('FINORA v1.2 Accounts, Categories, Edit/Delete & Installment Calculator
     const balances = await computeAccountBalances(HOUSEHOLD_ID);
     // 1000 + 5000 - 250.50 - 100 = 5649.5000
     expect(balances[0].current_balance).toBe('5649.5000');
+  });
+
+  it('permanently deletes a posted transaction and its journal entries', async () => {
+    const acc = await createFinancialAccount({
+      householdId: HOUSEHOLD_ID,
+      ownerUserId: USER_ID,
+      name: 'PermDel Bank',
+      accountType: 'bank',
+      openingBalance: '2000',
+      currencyCode: 'THB',
+    });
+    const cat = await createCategory({
+      householdId: HOUSEHOLD_ID,
+      name: 'Snacks',
+      categoryType: 'EXPENSE',
+    });
+
+    const { transaction } = await createLocalTransaction(
+      {
+        householdId: HOUSEHOLD_ID,
+        transactionType: 'expense',
+        amount: '300',
+        currencyCode: 'THB',
+        transactionDate: '2026-11-25',
+        accountId: acc.id,
+        categoryId: cat.id,
+        description: 'Delete me forever',
+        idempotencyKey: crypto.randomUUID(),
+        asDraft: false,
+      },
+      USER_ID
+    );
+
+    await permanentlyDeleteTransaction(transaction.id);
+
+    expect(await localDb.transactions.get(transaction.id)).toBeUndefined();
+    expect(await localDb.journal_entries.count()).toBe(0);
+    expect(await localDb.journal_lines.count()).toBe(0);
+
+    const balances = await computeAccountBalances(HOUSEHOLD_ID);
+    expect(balances[0].current_balance).toBe('2000.0000');
   });
 });

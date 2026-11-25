@@ -5,10 +5,9 @@ import { Trash2, X } from 'lucide-react';
 import { useFinora } from '@/components/layout/FinoraProvider';
 import { formatFriendlyError, sanitizeMoneyInput } from '@/lib/utilities/money';
 import {
-  deleteOrReverseTransaction,
+  permanentlyDeleteTransaction,
   updateOrCorrectTransaction,
 } from '@/modules/transactions/service';
-import { toBangkokDateString } from '@/modules/calendar/calendar.utils';
 import type { Transaction } from '@/types/financial';
 
 function EditTransactionForm({
@@ -18,7 +17,7 @@ function EditTransactionForm({
   tx: Transaction;
   onClose: () => void;
 }) {
-  const { userId, accounts, categories, refresh } = useFinora();
+  const { userId, accounts, categories, triggerSync } = useFinora();
 
   const [amount, setAmount] = useState(() => Number(tx.amount).toString());
   const [txDate, setTxDate] = useState(tx.transaction_date);
@@ -46,7 +45,7 @@ function EditTransactionForm({
         },
         userId
       );
-      await refresh();
+      await triggerSync();
       onClose();
     } catch (err) {
       setError(formatFriendlyError(err, 'ไม่สามารถแก้ไขรายการได้'));
@@ -59,8 +58,8 @@ function EditTransactionForm({
     setError(null);
     setSubmitting(true);
     try {
-      await deleteOrReverseTransaction(tx.id, toBangkokDateString());
-      await refresh();
+      await permanentlyDeleteTransaction(tx.id);
+      await triggerSync();
       onClose();
     } catch (err) {
       setError(formatFriendlyError(err, 'ไม่สามารถลบรายการได้'));

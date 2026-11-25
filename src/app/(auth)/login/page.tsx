@@ -216,7 +216,7 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-6 pt-5 border-t border-border flex items-center justify-between text-sm">
+            <div className="mt-6 pt-5 border-t border-border text-center text-sm">
               <button
                 type="button"
                 onClick={() => {
@@ -230,9 +230,6 @@ export default function LoginPage() {
                   ? 'ยังไม่มีบัญชี? สมัครใช้งานใหม่'
                   : 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ'}
               </button>
-              <Link href="/dashboard" className="text-accent hover:underline">
-                ใช้งานในเครื่อง
-              </Link>
             </div>
           </>
         )}

@@ -36,6 +36,7 @@ export function MobileShell({
     pendingSyncCount,
     unreadNotificationsCount,
     isSyncing,
+    loading,
     triggerSync,
   } = useFinora();
 
@@ -118,7 +119,35 @@ export function MobileShell({
       {/* Main Content */}
       <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-5 pb-28">
         <PwaSupport />
-        {children}
+        {!isOnline ? (
+          <div className="bg-surface border border-warning/40 rounded-[18px] p-6 text-center space-y-2">
+            <WifiOff className="w-8 h-8 text-warning mx-auto" />
+            <h2 className="text-base font-semibold text-primary">
+              ต้องเชื่อมต่ออินเทอร์เน็ต
+            </h2>
+            <p className="text-xs text-muted">
+              FINORA ซิงค์ข้อมูลผ่าน Cloud แบบเรียลไทม์ เพื่อให้ข้อมูลบนมือถือและคอมพิวเตอร์ตรงกัน 100%
+            </p>
+          </div>
+        ) : !loading && !isAuthenticated ? (
+          <div className="bg-surface border border-border rounded-[18px] p-6 text-center space-y-3">
+            <LogIn className="w-8 h-8 text-primary mx-auto" />
+            <h2 className="text-base font-semibold text-primary">
+              กรุณาเข้าสู่ระบบเพื่อใช้งาน FINORA
+            </h2>
+            <p className="text-xs text-muted">
+              เข้าสู่ระบบด้วยบัญชีเดียวกันทั้งบนมือถือและคอมพิวเตอร์เพื่อใช้ข้อมูลชุดเดียวกัน
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-[10px] bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+            >
+              เข้าสู่ระบบ (Log In)
+            </Link>
+          </div>
+        ) : (
+          children
+        )}
       </main>
 
       {/* Bottom Navigation (5 items, thumb-friendly center Add button) */}
